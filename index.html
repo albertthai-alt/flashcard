@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quizlet Static 2.2.1</title>
+  <link rel="icon" type="image/png" href="./favicon.png" />
+  <link rel="shortcut icon" type="image/png" href="./favicon.png" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="brand">
+        <div class="brand-title">Quizlet Static</div>
+      </div>
+      <div class="brand-right">
+        <div class="brand-version">v2.2.1</div>
+        <div class="brand-updated">2025.10.17</div>
+      </div>
+    </header>
+    <section class="input-section">
+      <label for="htmlFile" class="label">Chọn file HTML của bộ thẻ Quizlet (đã lưu dạng Webpage/HTML):</label>
+      <div class="input-row">
+        <input id="htmlFile" type="file" accept=".html,.htm,text/html" />
+        <button id="btnLoad" type="button" class="primary-btn">Tải thẻ Quizlet</button>
+        <button id="btnSave" type="button" class="secondary-btn">Lưu thẻ</button>
+        <button id="btnOpen" type="button" class="secondary-btn">Mở thẻ</button>
+        <button id="btnOpenAppend" type="button" class="secondary-btn">Mở thêm thẻ</button>
+        <input id="jsonFile" type="file" accept="application/json,.json" style="display:none" />
+        <input id="jsonFileAppend" type="file" accept="application/json,.json" style="display:none" />
+      </div>
+      <div class="hint">Gợi ý: trên Quizlet, mở bộ thẻ công khai, bấm Save Page As → chọn "Webpage, HTML only" (hoặc "Webpage, Complete").</div>
+      <div id="status" class="status"></div>
+    </section>
+
+    <section id="meta" class="meta" hidden>
+      <div class="meta-left">
+        <div class="title" id="setTitle"></div>
+        <div class="count"><span id="count"></span> thẻ</div>
+      </div>
+      <div class="mode-switch" id="modeSwitch" hidden>
+        <button id="modeStudy" class="mode-btn active">Học</button>
+        <button id="modePractice" class="mode-btn">Thực hành</button>
+        <button id="modeTest" class="mode-btn">Kiểm tra</button>
+        <button id="modeExport" class="mode-btn">Xuất</button>
+      </div>
+    </section>
+
+    
+
+    <main id="studyView" class="view">
+      <div class="card-area" id="cardArea" hidden>
+        <div class="card" id="card">
+          <div class="card-inner" id="cardInner">
+            <div class="card-face card-front" id="cardFront">Mặt trước</div>
+            <div class="card-face card-back" id="cardBack">Mặt sau</div>
+          </div>
+        </div>
+        <div class="controls">
+          <button id="prevBtn" type="button" class="secondary-btn">◀ Trước</button>
+          <button id="flipBtn" type="button" class="primary-btn">Lật</button>
+          <button id="nextBtn" type="button" class="secondary-btn">Tiếp ▶</button>
+        </div>
+        <div class="progress"><span id="progressIndex">0</span>/<span id="progressTotal">0</span></div>
+      </div>
+    </main>
+
+    <main id="testView" class="view" hidden>
+      <div class="test-area" id="testArea" hidden>
+        <div class="direction-switch" style="display:flex;gap:8px;margin-bottom:10px;">
+          <button id="dirDefToTerm" type="button" class="secondary-btn">Định nghĩa → Thuật ngữ</button>
+          <button id="dirTermToDef" type="button" class="secondary-btn">Thuật ngữ → Định nghĩa</button>
+        </div>
+        <div class="prompt" id="testPrompt"></div>
+        <input type="text" id="testAnswer" class="url-input" placeholder="Nhập câu trả lời..." />
+        <div class="test-controls">
+          <button id="checkBtn" type="button" class="primary-btn">Kiểm tra</button>
+          <button id="skipBtn" type="button" class="secondary-btn">Bỏ qua</button>
+        </div>
+        <div id="testFeedback" class="status"></div>
+        <div class="progress"><span id="testIndex">0</span>/<span id="testTotal">0</span></div>
+      </div>
+    </main>
+
+    <main id="summaryView" class="view" hidden>
+      <div class="test-area">
+        <div class="summary-header">Kết quả kiểm tra</div>
+        <div class="summary-actions" style="display:flex; gap:8px; flex-wrap:wrap; margin:8px 0 12px;">
+          <button id="btnSaveCorrect" type="button" class="secondary-btn">Lưu đáp án đúng (JSON)</button>
+          <button id="btnSaveWrong" type="button" class="secondary-btn">Lưu đáp án sai (JSON)</button>
+        </div>
+        <div id="summaryArea" class="summary"></div>
+      </div>
+    </main>
+
+    <main id="exportView" class="view" hidden>
+      <div class="test-area">
+        <div class="summary-header">Xuất ra Quizlet</div>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:6px 0;">
+          <label>Tách giữa Thuật ngữ và Định nghĩa: <input id="expSep1" type="text" value="{" style="width:80px" /></label>
+          <label>Tách giữa các thẻ: <input id="expSep2" type="text" value="}" style="width:80px" /></label>
+          <button id="btnExport" type="button" class="primary-btn">Tạo chuỗi</button>
+        </div>
+        <textarea id="exportBox" rows="6" style="width:100%;"></textarea>
+
+        <div class="summary-header" style="margin-top:14px;">Xuất danh sách</div>
+        <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin:6px 0;">
+          <label><input type="radio" name="expListMode" id="expListTerm" checked /> Thuật ngữ</label>
+          <label><input type="radio" name="expListMode" id="expListDef" /> Định nghĩa</label>
+          <button id="btnExportList" type="button" class="primary-btn">Tạo danh sách</button>
+        </div>
+        <textarea id="exportListBox" rows="6" style="width:100%;"></textarea>
+
+        <div class="summary-header" style="margin-top:14px;">Xuất HTML độc lập</div>
+        <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin:6px 0;">
+          <button id="btnExportStandalone" type="button" class="primary-btn">Tạo file HTML (thực hành + kiểm tra)</button>
+        </div>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div>Chạy thuần client. Không lưu dữ liệu.</div>
+    </footer>
+  </div>
+  <script src="./app.js"></script>
+</body>
+</html>
