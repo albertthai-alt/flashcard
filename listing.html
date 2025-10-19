@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>List of HTML files - flashcard</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial; padding: 28px; }
+    h1 { margin-bottom: 8px; }
+    ul { line-height: 1.7; }
+    .muted { color: #666; font-size: 0.95rem; }
+    .error { color: darkred; }
+  </style>
+</head>
+<body>
+  <h1>HTML files in repo root</h1>
+  <p class="muted">Source: <code>albertthai-alt/flashcard</code> — listing files at repository root via GitHub API</p>
+
+  <div id="status">Loading…</div>
+  <ul id="files"></ul>
+
+<script>
+const owner = 'albertthai-alt';
+const repo  = 'flashcard';
+const path  = ''; // root
+
+// basePath: relative path from this page to the HTML files.
+// Using './' so links work on GitHub Pages when the files are in the same folder as this listing file.
+const basePath = './';
+
+async function listHtmlFiles() {
+  const api = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+  const statusEl = document.getElementById('status');
+  try {
+    const res = await fetch(api, { headers: { 'Accept': 'application/vnd.github.v3+json' }});
+    if (!res.ok) {
+      if (res.status === 403) {
+        throw new Error('Rate limited or API access denied (403). Try again later.');
+      }
+      throw new Error('HTTP ' + res.status);
+    }
+    const items = await res.json();
+
+    const files = items
+      .filter(i => i.type === 'file' && i.name.toLowerCase().endsWith('.html'))
+      .sort((a,b) => a.name.localeCompare(b.name));
+
+    const ul = document.getElementById('files');
+    ul.innerHTML = '';
+
+    if (files.length === 0) {
+      statusEl.textContent = 'No HTML files found in repo root.';
+      return;
+    }
+
+    files.forEach(f => {
+      const li = document.createElement('li');
+      const a = document.createElement('a');
+
+      // Use relative link so GitHub Pages serves the file.
+      // If this listing file is in the same folder as the HTML files, './filename.html' works.
+      a.href = basePath + encodeURIComponent(f.name).replace(/%2F/g, '/');
+      a.textContent = f.name;
+      a.target = '_self';
+      li.appendChild(a);
+
+      // optional: show raw/download link or GitHub source link
+      const sep = document.createTextNode(' — ');
+      const gh = document.createElement('a');
+      gh.href = f.html_url; // GitHub file page
+      gh.textContent = 'source';
+      gh.target = '_blank';
+      gh.rel = 'noopener';
+
+      li.appendChild(sep);
+      li.appendChild(gh);
+
+      ul.appendChild(li);
+    });
+
+    statusEl.textContent = `Found ${files.length} HTML file(s). Click a file to open it on this site.`;
+  } catch (err) {
+    console.error(err);
+    document.getElementById('status').innerHTML = `<span class="error">Error: ${err.message}</span>`;
+    document.getElementById('files').innerHTML = '';
+  }
+}
+
+listHtmlFiles();
+</script>
+</body>
+</html>
