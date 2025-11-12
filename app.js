@@ -2056,7 +2056,7 @@ start();
       return data.results || [];
     } catch (error) {
       console.error('Error searching Notion databases:', error);
-      showStatus('Lỗi khi tìm kiếm database: ' + (error.message || 'Lỗi không xác định'), 'error');
+      showNotionStatus('Lỗi khi tìm kiếm database: ' + (error.message || 'Lỗi không xác định'), 'error');
       return [];
     }
   }
@@ -2064,7 +2064,7 @@ start();
   // Load cards from Notion database
   async function loadCardsFromNotion(databaseId, databaseName) {
     try {
-      showStatus('Đang tải thẻ từ Notion...');
+      showNotionStatus('Đang tải thẻ từ Notion...');
       
       // Query the database to get all cards
       const response = await fetch('/api/notion', {
@@ -2102,11 +2102,11 @@ start();
       
       if (shouldAppend) {
         cards = (cards || []).concat(newCards);
-        showStatus(`Đã thêm ${newCards.length} thẻ từ Notion database "${databaseName}"`, 'success');
+        showNotionStatus(`Đã thêm ${newCards.length} thẻ từ Notion database "${databaseName}"`, 'success');
       } else {
         cards = newCards;
         setTitle.textContent = databaseName || 'Notion Database';
-        showStatus(`Đã tải ${newCards.length} thẻ từ Notion`, 'success');
+        showNotionStatus(`Đã tải ${newCards.length} thẻ từ Notion`, 'success');
         // Switch to study view
         switchMode('study');
       }
@@ -2122,7 +2122,7 @@ start();
       
     } catch (error) {
       console.error('Error loading cards from Notion:', error);
-      showStatus('Lỗi khi tải thẻ từ Notion: ' + (error.message || 'Lỗi không xác định'), 'error');
+      showNotionStatus('Lỗi khi tải thẻ từ Notion: ' + (error.message || 'Lỗi không xác định'), 'error');
     }
   }
 
@@ -2295,11 +2295,22 @@ start();
     });
   }
 
-  // Helper function to show status messages
+  // Helper function to show status messages in the Notion section
   function showNotionStatus(message, type = '') {
     if (!notionStatus) return;
     
     notionStatus.textContent = message;
+    notionStatus.className = 'status';
+    
+    if (type === 'error') {
+      notionStatus.classList.add('error');
+      notionStatus.classList.remove('success');
+    } else if (type === 'success') {
+      notionStatus.classList.add('success');
+      notionStatus.classList.remove('error');
+    } else {
+      notionStatus.classList.remove('error', 'success');
+    }
     notionStatus.className = 'status';
     
     if (type === 'error') {
