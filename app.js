@@ -2002,15 +2002,9 @@ start();
   const btnSaveNotion = document.getElementById('btnSaveNotion');
   const btnCloseNotion = document.querySelector('.close-btn');
   const btnCancelNotion = document.getElementById('btnCancelNotion');
-  const btnLoadNotionDbs = document.getElementById('btnLoadNotionDbs');
   const btnSaveToNotion = document.getElementById('btnSaveToNotion');
-  const notionTokenInput = document.getElementById('notionToken');
-  const notionDbIdInput = document.getElementById('notionDbId');
-  const notionDbList = document.getElementById('notionDbList');
+  const notionDbNameInput = document.getElementById('notionDbName');
   const notionStatus = document.getElementById('notionStatus');
-
-  let selectedDbId = '';
-  let selectedDbName = '';
 
   // Show Notion modal
   if (btnSaveNotion) {
@@ -2039,35 +2033,47 @@ start();
   // Load Notion databases
   if (btnLoadNotionDbs) {
     btnLoadNotionDbs.addEventListener('click', async () => {
-      const token = notionTokenInput.value.trim();
-      if (!token) {
-        showNotionStatus('Vui lòng nhập Notion Token', 'error');
+      const dbName = notionDbNameInput.value.trim();
+      if (!dbName) {
+        showNotionStatus('Vui lòng nhập tên database', 'error');
         return;
       }
 
       try {
-        showNotionStatus('Đang tải danh sách database...');
+        showNotionStatus('Đang tìm kiếm database...');
         const response = await fetch('/api/notion', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            action: 'list_databases'
+            action: 'find_or_create_database',
+            database_name: dbName,
+            parent_page_id: notionParentPageIdInput.value.trim() || undefined
           })
         });
 
+        const data = await response.json();
+
         if (!response.ok) {
-          const error = await response.text();
-          throw new Error(error || 'Không thể tải danh sách database');
+          throw new Error(data.error || 'Không thể tìm hoặc tạo database');
         }
 
-        const data = await response.json();
-        renderDatabaseList(data.results || []);
+        // Show the found/created database
+        renderDatabaseList([{
+          id: data.id,
+          title: [{ plain_text: data.name }],
+          created: data.created
+        }]);
+        
+        if (data.created) {
+          showNotionStatus(`Đã tạo database mới: ${data.name}`, 'success');
+        } else {
+          showNotionStatus(`Đã tìm thấy database: ${data.name}`, 'success');
+        }
       } catch (error) {
-        console.error('Error loading Notion databases:', error);
-        showNotionStatus(`Lỗi: ${error.message || 'Không thể tải danh sách database'}`, 'error');
+        console.error('Error with Notion database:', error);
+        showNotionStatus(`Lỗi: ${error.message || 'Không thể xử lý yêu cầu'}`, 'error');
       }
     });
   }
@@ -2108,11 +2114,10 @@ start();
   // Save cards to Notion
   if (btnSaveToNotion) {
     btnSaveToNotion.addEventListener('click', async () => {
-      const token = notionTokenInput.value.trim();
-      const dbId = notionDbIdInput.value.trim();
+      const dbName = notionDbNameInput.value.trim();
       
-      if (!token || !dbId) {
-        showNotionStatus('Vui lòng nhập đầy đủ thông tin', 'error');
+      if (!dbName) {
+        showNotionStatus('Vui lòng nhập tên database', 'error');
         return;
       }
 
@@ -2122,16 +2127,36 @@ start();
       }
 
       try {
-        showNotionStatus('Đang lưu thẻ vào Notion...');
+        showNotionStatus('Đang kết nối với Notion...');
         
-        // Filter out cards that don't have both term and definition
+        // 1. Find or create the database (will use NOTION_PAGE_ID from environment)
+        const dbResponse = await fetch('/api/notion', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'find_or_create_database',
+            database_name: dbName
+            // parent_page_id will be read from NOTION_PAGE_ID in the backend
+          })
+        });
+
+        const dbData = await dbResponse.json();
+        
+        if (!dbResponse.ok) {
+          throw new Error(dbData.error || 'Không thể tìm hoặc tạo database');
+        }
+
+        const databaseId = dbData.id;
+        showNotionStatus(`Đang lưu thẻ vào database: ${dbData.name}...`);
+        
+        // 2. Filter out invalid cards
         const validCards = cards.filter(card => card.term && card.definition);
         
         if (validCards.length === 0) {
           throw new Error('Không có thẻ hợp lệ để lưu (cần có cả thuật ngữ và định nghĩa)');
         }
 
-        // Save each card to Notion
+        // 3. Save each card to Notion
         let successCount = 0;
         const errors = [];
         
@@ -2139,39 +2164,24 @@ start();
           try {
             const response = await fetch('/api/notion', {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-              },
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 action: 'create_page',
-                database_id: dbId,
+                database_id: databaseId,
                 properties: {
                   'Name': {
                     'title': [
-                      {
-                        'text': {
-                          'content': card.term.substring(0, 200) // Limit title length
-                        }
-                      }
+                      { 'text': { 'content': card.term.substring(0, 200) } }
                     ]
                   },
                   'Definition': {
                     'rich_text': [
-                      {
-                        'text': {
-                          'content': card.definition
-                        }
-                      }
+                      { 'text': { 'content': card.definition } }
                     ]
                   },
                   'Term': {
                     'rich_text': [
-                      {
-                        'text': {
-                          'content': card.term
-                        }
-                      }
+                      { 'text': { 'content': card.term } }
                     ]
                   }
                 }
@@ -2185,7 +2195,7 @@ start();
 
             successCount++;
             // Update progress
-            showNotionStatus(`Đang lưu thẻ ${index + 1}/${validCards.length}...`);
+            showNotionStatus(`Đang lưu thẻ ${index + 1}/${validCards.length} vào ${dbData.name}...`);
           } catch (error) {
             errors.push(`Thẻ ${index + 1}: ${error.message}`);
             console.error(`Error saving card ${index + 1}:`, error);
@@ -2194,13 +2204,16 @@ start();
 
         // Show results
         if (successCount > 0) {
-          const successMsg = `Đã lưu thành công ${successCount} thẻ vào Notion`;
+          const successMsg = `Đã lưu thành công ${successCount} thẻ vào database "${dbData.name}"`;
           const errorMsg = errors.length > 0 ? `\n\nCó ${errors.length} lỗi:\n${errors.join('\n')}` : '';
           showNotionStatus(successMsg + errorMsg, errors.length > 0 ? 'warning' : 'success');
           
           // Auto-close after success
           if (errors.length === 0) {
-            setTimeout(closeNotionModal, 2000);
+            setTimeout(() => {
+              closeNotionModal();
+              notionDbNameInput.value = ''; // Clear the input for next time
+            }, 2000);
           }
         } else {
           throw new Error(`Không thể lưu bất kỳ thẻ nào. Lỗi:\n${errors.join('\n')}`);
