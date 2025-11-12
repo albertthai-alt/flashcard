@@ -2088,7 +2088,7 @@ start();
         return {
           term: props.Term?.rich_text?.[0]?.plain_text || '',
           definition: props.Definition?.rich_text?.[0]?.plain_text || '',
-          starred: false,
+          starred: props.Starred?.checkbox || false,
           timestamp: new Date().toISOString()
         };
       }).filter(card => card.term || card.definition);
@@ -2270,6 +2270,9 @@ start();
                     'rich_text': [
                       { 'text': { 'content': card.term } }
                     ]
+                  },
+                  'Starred': {
+                    'checkbox': !!card.starred
                   }
                 }
               })
