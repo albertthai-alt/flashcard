@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Notion DB Search - Flashcard Proxy</title>
+  <style>
+    body{font-family:system-ui,Segoe UI,Roboto,Arial;padding:20px;max-width:960px;margin:auto}
+    input, button, textarea {padding:8px;margin:6px 0;border:1px solid #ccc;border-radius:6px}
+    .row{display:flex;gap:8px;align-items:center}
+    .card{border:1px solid #eee;padding:12px;border-radius:8px;margin:8px 0}
+    .muted{color:#666;font-size:0.9em}
+    .error{color:#a00}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:6px;border-bottom:1px solid #eee;text-align:left}
+    .small{font-size:0.9em;color:#444}
+  </style>
+</head>
+<body>
+  <h1>Notion — Search Databases (via Vercel Proxy)</h1>
+
+  <p class="muted">
+    Trang này gọi tới proxy trên Vercel (giấu token). Nếu bạn thấy lỗi liên quan đến token,
+    hãy chắc chắn đã thêm <code>NOTION_TOKEN</code> trong Vercel Environment Variables và redeploy.
+  </p>
+
+  <div class="card">
+    <label><strong>Từ khóa tìm kiếm</strong></label><br/>
+    <div class="row">
+      <input id="query" placeholder="ví dụ: flashcard, vocabulary, users..." style="flex:1" />
+      <button id="searchBtn">Search</button>
+      <button id="clearBtn">Clear</button>
+    </div>
+    <div class="muted">Để trống để lấy tất cả database mà integration có quyền truy cập.</div>
+  </div>
+
+  <div id="status" class="muted"></div>
+  <div id="error" class="error"></div>
+
+  <div id="results"></div>
+
+  <script>
+    // ---- THAY ĐỔI TẠI ĐÂY nếu cần ----
+    const API_ENDPOINT = "https://flashcard-virid-chi.vercel.app/api/notion";
+    // ----------------------------------
+
+    const queryInput = document.getElementById("query");
+    const resultsDiv = document.getElementById("results");
+    const statusDiv = document.getElementById("status");
+    const errorDiv = document.getElementById("error");
+    const searchBtn = document.getElementById("searchBtn");
+    const clearBtn = document.getElementById("clearBtn");
+
+    function setStatus(s){ statusDiv.textContent = s || ""; }
+    function setError(e){ errorDiv.textContent = e || ""; }
+
+    async function proxySearch(query = "", start_cursor = null) {
+      const payload = { page_size: 100 };
+      if (query) payload.query = query;
+      if (start_cursor) payload.start_cursor = start_cursor;
+
+      const res = await fetch(API_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const text = await res.text().catch(()=>"");
+        throw new Error(`HTTP ${res.status} - ${text || res.statusText}`);
+      }
+      return res.json();
+    }
+
+    function escapeHtml(s){
+      if(!s) return "";
+      return String(s).replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    }
+
+    function makeNotionLink(id){
+      const noDash = id.replace(/-/g,"");
+      return "https://www.notion.so/" + noDash;
+    }
+
+    function renderTable(data) {
+      if(!data || !data.results || data.results.length === 0){
+        resultsDiv.innerHTML = "<div class='muted'>Không có database phù hợp.</div>";
+        return;
+      }
+
+      let html = "<table><thead><tr><th>Tên</th><th>ID</th><th>Parent</th><th>Link</th></tr></thead><tbody>";
+      data.results.forEach(db => {
+        const title = (db.title && db.title[0] && db.title[0].plain_text) ? db.title[0].plain_text : "(untitled)";
+        const id = db.id;
+        const parent = db.parent?.page_id || (db.parent?.workspace ? "(workspace-root)" : "");
+        const link = makeNotionLink(id);
+        html += `<tr>
+          <td>${escapeHtml(title)}</td>
+          <td style="font-family:monospace">${escapeHtml(id)}</td>
+          <td>${escapeHtml(parent)}</td>
+          <td><a href="${link}" target="_blank" rel="noopener">Open</a></td>
+        </tr>`;
+      });
+      html += "</tbody></table>";
+
+      if(data.has_more){
+        html += `<div style="margin-top:12px"><button id="moreBtn">Load more</button></div>`;
+      }
+
+      resultsDiv.innerHTML = html;
+
+      const moreBtn = document.getElementById("moreBtn");
+      if(moreBtn){
+        moreBtn.addEventListener("click", async () => {
+          setStatus("Đang tải thêm...");
+          setError("");
+          try {
+            const next = await proxySearch(queryInput.value.trim(), data.next_cursor);
+            // combine and re-render merged results
+            const combined = {
+              results: (data.results || []).concat(next.results || []),
+              has_more: next.has_more,
+              next_cursor: next.next_cursor
+            };
+            renderTable(combined);
+            setStatus("");
+          } catch (err) {
+            setError(String(err.message || err));
+            setStatus("");
+          }
+        });
+      }
+    }
+
+    searchBtn.addEventListener("click", async () => {
+      setStatus("Đang tìm...");
+      setError("");
+      resultsDiv.innerHTML = "";
+      const q = queryInput.value.trim();
+      try {
+        const data = await proxySearch(q);
+        renderTable(data);
+        setStatus("");
+      } catch (err) {
+        setError(String(err.message || err));
+        setStatus("");
+      }
+    });
+
+    clearBtn.addEventListener("click", () => {
+      queryInput.value = "";
+      resultsDiv.innerHTML = "";
+      setError("");
+      setStatus("");
+    });
+
+    // optional: auto-search when user presses Enter in input
+    queryInput.addEventListener("keydown", (e) => {
+      if(e.key === "Enter") { searchBtn.click(); }
+    });
+
+    // helpful note
+    (function showNote(){
+      const n = document.createElement("div");
+      n.className = "muted small";
+      n.style.marginTop = "10px";
+      n.innerHTML = "Lưu ý: proxy phải có biến môi trường NOTION_TOKEN. Nếu API trả lỗi liên quan token, kiểm tra lại Vercel env và redeploy.";
+      document.body.appendChild(n);
+    })();
+  </script>
+</body>
+</html>
