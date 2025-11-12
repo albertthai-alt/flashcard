@@ -1,18 +1,26 @@
 (() => {
   const $ = (sel) => document.querySelector(sel);
+  const chkStarred = document.getElementById('chkStarred');
+  const chkRead = document.getElementById('chkRead');
   const modeStudyBtn = $('#modeStudy');
   const modeTestBtn = $('#modeTest');
   const modePracticeBtn = document.getElementById('modePractice');
   const modeExportBtn = document.getElementById('modeExport');
   const modeSwitch = document.getElementById('modeSwitch');
+  
+  // Study direction elements
+  const studyDirDefToTermBtn = document.getElementById('studyDirDefToTerm');
+  const studyDirTermToDefBtn = document.getElementById('studyDirTermToDef');
+  let studyDirection = 'term_to_def'; // Default: Thuật ngữ -> Định nghĩa
   const btnLoad = $('#btnLoad');
   const btnSave = document.getElementById('btnSave');
+  const btnSaveToNotion = document.getElementById('btnSaveToNotion');
   const btnOpen = document.getElementById('btnOpen');
-  const btnOpenAppend = document.getElementById('btnOpenAppend');
   const jsonFile = document.getElementById('jsonFile');
-  const jsonFileAppend = document.getElementById('jsonFileAppend');
   const fileInput = $('#htmlFile');
   const status = $('#status');
+  const chkAppend = document.getElementById('chkAppend');
+  const ghList = document.getElementById('ghList');
 
   const meta = $('#meta');
   const setTitle = $('#setTitle');
@@ -26,7 +34,6 @@
   const cardBack = $('#cardBack');
   const prevBtn = $('#prevBtn');
   const nextBtn = $('#nextBtn');
-  const flipBtn = $('#flipBtn');
   const progressIndex = $('#progressIndex');
   const progressTotal = $('#progressTotal');
 
@@ -125,6 +132,67 @@
   let idx = 0;
   let testIdx = 0;
   let testOrder = [];
+  let knownCards = new Set(); // Track known card indices
+  
+  // Toggle star status for a card (only updates in memory, doesn't save to file)
+  function toggleStar(cardIndex) {
+    if (cardIndex >= 0 && cardIndex < cards.length) {
+      cards[cardIndex].starred = !cards[cardIndex].starred;
+      updateStarButton(cardIndex);
+      // Don't save to file here, only update the UI
+    }
+  }
+  
+  // Toggle known status for a card
+  function toggleKnown(cardIndex) {
+    if (cardIndex >= 0 && cardIndex < cards.length) {
+      if (knownCards.has(cardIndex)) {
+        knownCards.delete(cardIndex);
+      } else {
+        knownCards.add(cardIndex);
+      }
+      updateKnownButton(cardIndex);
+      updateNextButtonText();
+    }
+  }
+  
+  // Update star button appearance based on card's starred status
+  function updateStarButton(cardIndex) {
+    const starBtn = document.getElementById('starBtn');
+    if (starBtn && cardIndex >= 0 && cardIndex < cards.length) {
+      const isStarred = cards[cardIndex]?.starred;
+      starBtn.innerHTML = isStarred ? '★' : '☆';
+      starBtn.style.color = isStarred ? '#ffd700' : '#ccc';
+      starBtn.classList.toggle('starred', isStarred);
+    }
+  }
+  
+  // Update known button appearance
+  function updateKnownButton(cardIndex) {
+    const knownBtn = document.getElementById('knownBtn');
+    if (knownBtn) {
+      const isKnown = knownCards.has(cardIndex);
+      knownBtn.innerHTML = isKnown ? '✓' : '✓';
+      knownBtn.style.color = isKnown ? '#4CAF50' : '#ccc';
+      knownBtn.style.opacity = isKnown ? '1' : '0.5';
+      knownBtn.title = isKnown ? 'Bỏ đánh dấu đã biết' : 'Đánh dấu đã biết';
+    }
+  }
+  
+  // Update next button text based on known cards
+  function updateNextButtonText() {
+    const currentCards = getCurrentCards();
+    const isLastCard = idx === currentCards.length - 1;
+    const hasKnownCards = knownCards.size > 0;
+    
+    if (nextBtn) {
+      if (isLastCard && hasKnownCards) {
+        nextBtn.textContent = 'Học tiếp';
+      } else {
+        nextBtn.textContent = 'Tiếp ▶';
+      }
+    }
+  }
   let mode = 'study';
   let testCorrect = 0;
   let currentWasWrong = false;
@@ -538,16 +606,16 @@ start();
   }
 
   function saveCardsToJson() {
-    if (!cards.length) {
-      status.textContent = 'Chưa có thẻ để lưu.';
-      status.classList.remove('success');
-      status.classList.add('error');
-      return;
-    }
+    if (!cards.length) return;
+    
     const data = {
-      title: setTitle.textContent || 'Bộ thẻ',
-      count: cards.length,
-      cards: cards,
+      title: setTitle.value || 'Flashcards',
+      cards: cards.map(c => ({
+        term: c.term,
+        definition: c.definition,
+        starred: !!c.starred,  // Include star status when saving
+        timestamp: c.timestamp || new Date().toISOString()
+      }))
     };
     const safeTitle = (data.title || 'bo-the').replace(/[^\w\-]+/g, '_').slice(0, 50);
     const filename = (safeTitle || 'bo-the') + '.json';
@@ -571,7 +639,9 @@ start();
       const list = Array.isArray(arr) ? arr : [];
       const normalized = list.map((c) => ({
         term: (c && (c.term || c.front || c.word)) || '',
-        definition: (c && (c.definition || c.back)) || ''
+        definition: (c && (c.definition || c.back)) || '',
+        starred: !!c.starred,
+        timestamp: c.timestamp || new Date().toISOString()
       })).filter((c) => c.term || c.definition);
       if (!normalized.length) throw new Error('File JSON không hợp lệ hoặc không có thẻ.');
       cards = normalized;
@@ -592,6 +662,126 @@ start();
       status.classList.remove('success');
       status.classList.add('error');
       if (modeSwitch) modeSwitch.hidden = true;
+    }
+  }
+
+  async function openCardsFromGithub(url, name) {
+    try {
+      const resp = await fetch(url, { cache: 'no-store' });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const text = await resp.text();
+      const { normalized, title } = parseJsonTextToCards(text);
+      if (!normalized.length) throw new Error('File JSON không hợp lệ hoặc không có thẻ.');
+      const shouldAppend = !!(cards && cards.length && chkAppend && chkAppend.checked);
+      if (shouldAppend) {
+        cards = (cards || []).concat(normalized);
+        countEl.textContent = String(cards.length);
+        meta.hidden = false;
+        if (modeSwitch) modeSwitch.hidden = false;
+        renderStudy();
+        status.textContent = 'Đã thêm ' + normalized.length + ' thẻ từ GitHub.';
+        status.classList.remove('error');
+        status.classList.add('success');
+      } else {
+        cards = normalized;
+        setTitle.textContent = title || name || '';
+        countEl.textContent = String(cards.length);
+        meta.hidden = false;
+        idx = 0;
+        renderStudy();
+        startTest();
+        status.textContent = 'Đã mở từ GitHub.';
+        status.classList.remove('error');
+        status.classList.add('success');
+      }
+    } catch (e) {
+      status.textContent = 'Lỗi mở từ GitHub: ' + (e && e.message ? e.message : e);
+      status.classList.remove('success');
+      status.classList.add('error');
+    }
+  }
+
+  async function loadGithubBrowser(path = '') {
+    if (!ghList) return;
+    try {
+      ghList.textContent = 'Đang tải danh sách...';
+      const api = path
+        ? `https://api.github.com/repos/albertthai-alt/browse/contents/quizlet/${path}`
+        : 'https://api.github.com/repos/albertthai-alt/browse/contents/quizlet';
+      
+      const resp = await fetch(api, { cache: 'no-store' });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      
+      const data = await resp.json();
+      const items = Array.isArray(data) ? data : [];
+      
+      // Separate folders and files
+      const folders = items.filter(it => it.type === 'dir');
+      const files = items.filter(it => it.type === 'file' && /\.json$/i.test(it.name));
+      
+      // Sort alphabetically
+      folders.sort((a,b) => a.name.localeCompare(b.name, 'vi'));
+      files.sort((a,b) => a.name.localeCompare(b.name, 'vi'));
+      
+      // Create breadcrumb navigation
+      const pathParts = path.split('/').filter(Boolean);
+      let breadcrumb = '<div style="margin-bottom: 10px;">';
+      breadcrumb += '<a href="#" class="gh-folder" data-path="" style="color: #60a5fa;">Thư viện</a>';
+      
+      let currentPath = '';
+      pathParts.forEach((part, index) => {
+        currentPath += (currentPath ? '/' : '') + part;
+        breadcrumb += ' / ';
+        breadcrumb += `<a href="#" class="gh-folder" data-path="${currentPath}" style="color: #60a5fa;">${part}</a>`;
+      });
+      
+      breadcrumb += '</div>';
+      
+      // Create folder list
+      let html = breadcrumb;
+      
+      if (folders.length > 0) {
+        html += '<div style="margin-bottom: 10px;">';
+        html += '<div style="font-weight: bold; margin-bottom: 5px;">Thư mục:</div>';
+        html += folders.map(folder => (
+          `<a href="#" class="gh-folder" data-path="${path ? path + '/' : ''}${folder.name}" style="display:inline-flex;align-items:center;padding:6px 10px;margin:0 5px 5px 0;border:1px solid #3b82f6;border-radius:8px;background:rgba(59,130,246,0.1);color:#60a5fa;text-decoration:none;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:5px;">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+            </svg>
+            ${folder.name}
+          </a>`
+        )).join('');
+        html += '</div>';
+      }
+      
+      // Create file list
+      if (files.length > 0) {
+        html += '<div>';
+        html += '<div style="font-weight: bold; margin: 10px 0 5px 0;">Tập tin JSON:</div>';
+        html += files.map(file => (
+          `<a href="#" class="gh-json" data-url="${file.download_url || ''}" data-name="${file.name || ''}" style="display:inline-flex;align-items:center;padding:6px 10px;margin:0 5px 5px 0;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;color:#4b5563;text-decoration:none;transition:all 0.2s ease;box-shadow:0 1px 2px 0 rgba(0,0,0,0.05);font-size:0.9em;max-width:100%;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" style="margin-right:6px;flex-shrink:0;">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+            <span style="white-space: normal; word-break: break-word; text-align: left;">${file.name}</span>
+          </a>`
+        )).join('');
+        html += '</div>';
+      }
+      
+      if (folders.length === 0 && files.length === 0) {
+        html += '<div>Không tìm thấy thư mục hoặc file JSON nào.</div>';
+      }
+      
+      ghList.innerHTML = html;
+      
+    } catch (e) {
+      console.error('Error loading GitHub browser:', e);
+      ghList.innerHTML = '<div style="color: #ef4444;">Lỗi tải danh sách từ GitHub. Vui lòng thử lại sau.</div>';
     }
   }
 
@@ -688,18 +878,73 @@ start();
     return { title: '', cards: [] };
   }
 
+  // Function to get current cards based on filters
+  function getCurrentCards() {
+    // Always return a fresh copy of cards to avoid reference issues
+    let currentCards = JSON.parse(JSON.stringify(cards));
+    
+    // Apply star filter if needed
+    if (chkStarred && chkStarred.checked) {
+      currentCards = currentCards.filter(card => card.starred);
+    }
+    
+    return currentCards;
+  }
+
+  // Update card count display
+  function updateCardCount() {
+    if (!countEl) return;
+    const currentCards = getCurrentCards();
+    countEl.textContent = currentCards.length;
+  }
+
   function renderStudy() {
-    if (!cards.length) {
+    const currentCards = getCurrentCards();
+    const filteredCards = currentCards.filter((card, index) => {
+      const cardIndex = cards.findIndex(c => 
+        c.term === card.term && c.definition === card.definition
+      );
+      return !knownCards.has(cardIndex);
+    });
+    
+    if (filteredCards.length === 0) {
       cardArea.hidden = true;
+      // If no cards left but we have known cards, reset to show all cards
+      if (knownCards.size > 0) {
+        knownCards.clear();
+        idx = 0;
+        renderStudy();
+      }
       return;
     }
+    
+    // Ensure idx is within bounds for filtered cards
+    if (idx >= filteredCards.length) {
+      idx = Math.max(0, filteredCards.length - 1);
+    }
     cardArea.hidden = false;
-    const c = cards[idx];
-    cardFront.textContent = c.term || '';
-    cardBack.textContent = c.definition || '';
+    
+    const c = filteredCards[idx];
+    const currentCardIndex = cards.findIndex(card => 
+      card.term === c.term && card.definition === c.definition
+    );
+    
+    // Set card content based on study direction
+    if (studyDirection === 'def_to_term') {
+      cardFront.textContent = c.definition || '';
+      cardBack.textContent = c.term || '';
+    } else {
+      cardFront.textContent = c.term || '';
+      cardBack.textContent = c.definition || '';
+    }
     card.classList.remove('flipped');
     progressIndex.textContent = String(idx + 1);
-    progressTotal.textContent = String(cards.length);
+    // Show filtered card count in study mode
+    progressTotal.textContent = String(filteredCards.length);
+    
+    // Update buttons with the correct card index from the original cards array
+    updateStarButton(currentCardIndex);
+    updateKnownButton(currentCardIndex);
   }
 
   function normalize(s) {
@@ -720,7 +965,7 @@ start();
   }
 
   function getCurrentIndex() {
-    if (mode === 'practice') return practiceQueue.length ? practiceQueue[0] : 0;
+    if (mode === 'practice') return practiceQueue.length ? practiceQueue[0] : -1;
     return testOrder[testIdx];
   }
 
@@ -733,11 +978,24 @@ start();
   }
 
   function startTest() {
-    if (!cards.length) {
+    const currentCards = getCurrentCards();
+    if (!currentCards.length) {
       testArea.hidden = true;
       return;
     }
-    testOrder = shuffle([...Array(cards.length).keys()]);
+    // Create an array of original indices for the current filtered cards
+    const originalIndices = [];
+    if (chkStarred && chkStarred.checked) {
+      // If filtering by starred, get the original indices of starred cards
+      cards.forEach((card, index) => {
+        if (card.starred) originalIndices.push(index);
+      });
+    } else {
+      // Otherwise use all indices
+      originalIndices.push(...Array(cards.length).keys());
+    }
+    
+    testOrder = shuffle(originalIndices);
     testIdx = 0;
     testCorrect = 0;
     results = [];
@@ -753,16 +1011,30 @@ start();
         dirDefToTermBtn.classList.remove('active');
       }
     }
-    testTotal.textContent = String(cards.length);
+    testTotal.textContent = String(currentCards.length);
     showTestPrompt();
   }
 
   function startPractice() {
-    if (!cards.length) {
+    const currentCards = getCurrentCards();
+    if (!currentCards.length) {
       testArea.hidden = true;
       return;
     }
-    practiceQueue = shuffle([...Array(cards.length).keys()]);
+    
+    // Create an array of original indices for the current filtered cards
+    const originalIndices = [];
+    if (chkStarred && chkStarred.checked) {
+      // If filtering by starred, get the original indices of starred cards
+      cards.forEach((card, index) => {
+        if (card.starred) originalIndices.push(index);
+      });
+    } else {
+      // Otherwise use all indices
+      originalIndices.push(...Array(cards.length).keys());
+    }
+    
+    practiceQueue = shuffle(originalIndices);
     testCorrect = 0;
     results = [];
     testArea.hidden = false;
@@ -776,12 +1048,17 @@ start();
         dirDefToTermBtn.classList.remove('active');
       }
     }
-    testTotal.textContent = String(cards.length);
+    testTotal.textContent = String(currentCards.length);
     showTestPrompt();
   }
 
   function showTestPrompt() {
-    const c = cards[getCurrentIndex()];
+    const currentIndex = getCurrentIndex();
+    if (currentIndex === -1 || currentIndex >= cards.length) {
+      testArea.hidden = true;
+      return;
+    }
+    const c = cards[currentIndex];
     if (testDirection === 'def_to_term') {
       // Show definition, expect term
       testPrompt.textContent = c.definition || '';
@@ -796,7 +1073,8 @@ start();
     testFeedback.classList.remove('error', 'success');
     if (mode === 'practice') {
       const remaining = practiceQueue.length;
-      testIndex.textContent = String(cards.length - remaining + 1);
+      const total = getCurrentCards().length;
+      testIndex.textContent = String(total - remaining + 1);
     } else {
       testIndex.textContent = String(testIdx + 1);
     }
@@ -817,6 +1095,8 @@ start();
       return;
     }
     const got = normalizeForCompare(rawInput);
+    const correctAnswer = testDirection === 'def_to_term' ? (c.term || '') : (c.definition || '');
+    
     if (got && expected && (got === expected)) {
       // If previously wrong for this card, do not increase score; allow advance for learning purposes
       if (currentWasWrong) {
@@ -839,16 +1119,23 @@ start();
           correctFirstTry: true
         });
       }
-      if (mode === 'practice') setTimeout(() => nextPractice(true), 200);
-      else setTimeout(nextTest, 300);
+      
+      // Speak only the correct answer
+      speakText(correctAnswer);
+      
+      if (mode === 'practice') setTimeout(() => nextPractice(true), 2000);
+      else setTimeout(nextTest, 2000);
     } else {
-      const correctAnswer = testDirection === 'def_to_term' ? (c.term || '') : (c.definition || '');
       // Always show the correct answer from the card for wrong attempts
       testFeedback.textContent = 'Sai. Đáp án: ' + correctAnswer;
       testFeedback.classList.remove('success');
       testFeedback.classList.add('error');
       currentWasWrong = true;
       if (!currentFirstWrongAnswer) currentFirstWrongAnswer = rawInput;
+      
+      // Speak only the correct answer
+      speakText(correctAnswer);
+      
       // In test mode: record only the first wrong attempt for this index
       if (mode !== 'practice') {
         const already = results.some(r => r.index === idxNow);
@@ -963,7 +1250,42 @@ start();
     const percent = totalCards ? Math.round((correct / totalCards) * 100) : 0;
     if (summaryHeader) {
       const label = (mode === 'practice') ? 'Kết quả thực hành' : 'Kết quả kiểm tra';
-      summaryHeader.textContent = label + ' — Đúng: ' + correct + '/' + totalCards + ' (' + percent + '%)';
+      summaryHeader.innerHTML = `
+        <div>${label} — Đúng: ${correct}/${totalCards} (${percent}%)</div>
+        <button id="starWrongBtn" class="secondary-btn" style="margin-left: 10px;">
+          Đánh dấu sao các câu sai
+        </button>
+      `;
+      
+      // Add click handler for the star wrong answers button
+      const starWrongBtn = document.getElementById('starWrongBtn');
+      if (starWrongBtn) {
+        starWrongBtn.addEventListener('click', () => {
+          // Get all incorrect answers
+          const incorrectIndices = Array.from(groups.entries())
+            .filter(([idx, g]) => !g.correctFirstTry)
+            .map(([idx]) => idx);
+          
+          // Mark them as starred
+          incorrectIndices.forEach(idx => {
+            if (cards[idx]) {
+              cards[idx].starred = true;
+            }
+          });
+          
+          // Show feedback
+          const feedback = document.createElement('div');
+          feedback.textContent = `Đã đánh dấu sao ${incorrectIndices.length} câu sai.`;
+          feedback.style.marginTop = '10px';
+          feedback.style.color = '#0a7f2d';
+          summaryHeader.appendChild(feedback);
+          
+          // Remove feedback after 3 seconds
+          setTimeout(() => {
+            feedback.remove();
+          }, 3000);
+        });
+      }
     }
     const items = Array.from(groups.entries()).map(function(entry, i) {
       const idx = entry[0];
@@ -974,12 +1296,16 @@ start();
       const cls = ok ? 'ok' : 'fail'; // keep original color/class unchanged
       const attemptsList = g.attempts.map(function(a){ return '<li><pre>' + escapeHtml(a) + '</pre></li>'; }).join('');
       const toggleBtn = ok ? '' : ('<button class="mark-toggle" data-index="' + idx + '">' + (effOk ? 'Đánh dấu sai' : 'Đánh dấu đúng') + '</button>');
+      const starBtn = '<button class="star-item-btn" style="margin-left: 8px;" data-index="' + idx + '">' + 
+                     (cards[idx]?.starred ? '★ Bỏ đánh dấu sao' : '☆ Đánh dấu sao') + '</button>';
+      
       return (
-        '<div class="summary-item ' + cls + '">' +
+        '<div class="summary-item ' + cls + '" data-card-index="' + idx + '">' +
           '<div class="summary-row">' +
             '<span class="badge ' + cls + '">' + status + '</span>' +
             '<span class="summary-idx">#' + (i + 1) + '</span>' +
             toggleBtn +
+            starBtn +
           '</div>' +
           '<div class="summary-term"><span class="key">Thuật ngữ:</span> <pre>' + escapeHtml(g.term) + '</pre></div>' +
           '<div class="summary-def"><span class="key">Định nghĩa:</span> <pre>' + escapeHtml(g.definition) + '</pre></div>' +
@@ -999,14 +1325,34 @@ start();
   if (summaryArea) {
     summaryArea.addEventListener('click', (e) => {
       const t = e.target;
-      if (!(t && t.classList && t.classList.contains('mark-toggle'))) return;
-      const idxStr = t.getAttribute('data-index');
-      const idx = idxStr != null ? parseInt(idxStr, 10) : NaN;
-      if (isNaN(idx)) return;
-      const current = !!summaryOverrides.get(idx);
-      summaryOverrides.set(idx, !current);
-      // Re-render to refresh header and labels (colors remain as original)
-      renderSummary();
+      if (!t || !t.classList) return;
+      
+      // Handle mark toggle button
+      if (t.classList.contains('mark-toggle')) {
+        const idxStr = t.getAttribute('data-index');
+        const idx = idxStr != null ? parseInt(idxStr, 10) : NaN;
+        if (isNaN(idx)) return;
+        const current = !!summaryOverrides.get(idx);
+        summaryOverrides.set(idx, !current);
+        // Re-render to refresh header and labels (colors remain as original)
+        renderSummary();
+      }
+      
+      // Handle star button for individual items
+      if (t.classList.contains('star-item-btn')) {
+        e.preventDefault();
+        e.stopPropagation();
+        const cardItem = t.closest('.summary-item');
+        if (cardItem) {
+          const idxStr = cardItem.getAttribute('data-card-index');
+          const idx = idxStr != null ? parseInt(idxStr, 10) : -1;
+          if (idx >= 0 && idx < cards.length) {
+            cards[idx].starred = !cards[idx].starred;
+            t.textContent = cards[idx].starred ? '★ Bỏ đánh dấu sao' : '☆ Đánh dấu sao';
+            t.classList.toggle('starred', cards[idx].starred);
+          }
+        }
+      }
     });
   }
 
@@ -1048,29 +1394,59 @@ start();
     }
   }
 
+  function parseJsonTextToCards(text) {
+    const obj = JSON.parse(text);
+    const arr = Array.isArray(obj) ? obj : obj && obj.cards;
+    const list = Array.isArray(arr) ? arr : [];
+    const normalized = list.map((c) => ({
+      term: (c && (c.term || c.front || c.word)) || '',
+      definition: (c && (c.definition || c.back)) || ''
+    })).filter((c) => c.term || c.definition);
+    return { normalized, title: (obj && obj.title) || '' };
+  }
+
   async function openAdditionalCardsFromJson(file) {
     try {
       const text = await file.text();
-      const obj = JSON.parse(text);
-      const arr = Array.isArray(obj) ? obj : obj.cards;
-      const list = Array.isArray(arr) ? arr : [];
-      const normalized = list.map((c) => ({
-        term: (c && (c.term || c.front || c.word)) || '',
-        definition: (c && (c.definition || c.back)) || ''
-      })).filter((c) => c.term || c.definition);
+      const { normalized } = parseJsonTextToCards(text);
       if (!normalized.length) throw new Error('File JSON không hợp lệ hoặc không có thẻ.');
-      // Append
       cards = (cards || []).concat(normalized);
       countEl.textContent = String(cards.length);
       meta.hidden = false;
       if (modeSwitch) modeSwitch.hidden = false;
-      // Re-render current views
       renderStudy();
+      // Stop any ongoing speech when new cards are loaded
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
       status.textContent = 'Đã thêm ' + normalized.length + ' thẻ từ file JSON.';
       status.classList.remove('error');
       status.classList.add('success');
     } catch (e) {
       status.textContent = 'Lỗi mở thêm file JSON: ' + (e && e.message ? e.message : e);
+      status.classList.remove('success');
+      status.classList.add('error');
+    }
+  }
+
+  async function openAdditionalCardsFromJsonText(text) {
+    try {
+      const { normalized } = parseJsonTextToCards(text);
+      if (!normalized.length) throw new Error('File JSON không hợp lệ hoặc không có thẻ.');
+      cards = (cards || []).concat(normalized);
+      countEl.textContent = String(cards.length);
+      meta.hidden = false;
+      if (modeSwitch) modeSwitch.hidden = false;
+      renderStudy();
+      // Stop any ongoing speech when new cards are loaded
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+      status.textContent = 'Đã thêm ' + normalized.length + ' thẻ từ JSON.';
+      status.classList.remove('error');
+      status.classList.add('success');
+    } catch (e) {
+      status.textContent = 'Lỗi mở thêm JSON: ' + (e && e.message ? e.message : e);
       status.classList.remove('success');
       status.classList.add('error');
     }
@@ -1385,17 +1761,35 @@ start();
         extracted = res.cards;
       }
       if (!extracted.length) throw new Error('Không trích xuất được thẻ từ file.');
-      cards = extracted;
-      setTitle.textContent = title || file.name;
-      countEl.textContent = String(cards.length);
-      meta.hidden = false;
+      const shouldAppend = !!(cards && cards.length && chkAppend && chkAppend.checked);
+      if (shouldAppend) {
+        cards = (cards || []).concat(extracted);
+        countEl.textContent = String(cards.length);
+        meta.hidden = false;
+        renderStudy();
+        // Stop any ongoing speech when new cards are loaded
+        if (window.speechSynthesis) {
+          window.speechSynthesis.cancel();
+        }
+        status.textContent = 'Đã thêm ' + extracted.length + ' thẻ từ file HTML.';
+        status.classList.remove('error');
+        status.classList.add('success');
+      } else {
+        cards = extracted;
+        setTitle.textContent = title || file.name;
+        countEl.textContent = String(cards.length);
+        meta.hidden = false;
 
-      idx = 0;
-      renderStudy();
-      startTest();
-
-      status.textContent = 'Đã tải xong.';
-      status.classList.add('success');
+        idx = 0;
+        renderStudy();
+        startTest();
+        // Stop any ongoing speech when new cards are loaded
+        if (window.speechSynthesis) {
+          window.speechSynthesis.cancel();
+        }
+        status.textContent = 'Đã tải xong.';
+        status.classList.add('success');
+      }
     } catch (e) {
       const msg = 'Lỗi: ' + (e && e.message ? e.message : e);
       status.textContent = msg;
@@ -1431,27 +1825,144 @@ start();
     myIcon.setAttribute('type', 'image/png');
   }
 
+  // Study direction toggle
+  function updateStudyDirection(newDirection) {
+    studyDirection = newDirection;
+    if (studyDirDefToTermBtn && studyDirTermToDefBtn) {
+      studyDirDefToTermBtn.classList.toggle('active', studyDirection === 'def_to_term');
+      studyDirTermToDefBtn.classList.toggle('active', studyDirection === 'term_to_def');
+    }
+    // Re-render the current card with the new direction
+    if (mode === 'study') {
+      renderStudy();
+    }
+  }
+
+  if (studyDirDefToTermBtn) {
+    studyDirDefToTermBtn.addEventListener('click', () => updateStudyDirection('def_to_term'));
+  }
+  if (studyDirTermToDefBtn) {
+    studyDirTermToDefBtn.addEventListener('click', () => updateStudyDirection('term_to_def'));
+  }
+  
+  // Set default study direction
+  updateStudyDirection('term_to_def');
+
+  // Toggle starred filter
+  if (chkStarred) {
+    chkStarred.addEventListener('change', () => {
+      // Get current cards after filter change
+      const currentCards = getCurrentCards();
+      // Reset index if it's out of bounds
+      if (currentCards.length > 0 && idx >= currentCards.length) {
+        idx = 0;
+      }
+      
+      // Update the UI to reflect the filtered cards
+      if (mode === 'study') {
+        // Reset to first card when filtering
+        idx = 0;
+        renderStudy();
+      } else if (mode === 'test' || mode === 'practice') {
+        // Reset test/practice state when filtering
+        testIdx = 0;
+        testOrder = [];
+        if (mode === 'test') {
+          startTest();
+        } else if (mode === 'practice') {
+          startPractice();
+        }
+      }
+      
+      // Update the card count
+      updateCardCount();
+    });
+  }
+
+  // Notion save functionality
+  const NOTION_API_ENDPOINT = 'https://flashcard-virid-chi.vercel.app/api/notion';
+  
+  async function saveCardsToNotion() {
+    if (!cards.length) {
+      status.textContent = 'Không có thẻ nào để lưu';
+      return;
+    }
+
+    const databaseId = prompt('Nhập ID của Notion database:');
+    if (!databaseId) return;
+
+    status.textContent = 'Đang lưu vào Notion...';
+    
+    try {
+      const response = await fetch(NOTION_API_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'create',
+          database_id: databaseId.trim(),
+          cards: cards.map(card => ({
+            term: card.term,
+            definition: card.definition
+          }))
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`Lỗi từ máy chủ: ${error}`);
+      }
+
+      const result = await response.json();
+      status.textContent = `Đã lưu ${result.saved || 0} thẻ vào Notion`;
+    } catch (err) {
+      console.error('Lỗi khi lưu vào Notion:', err);
+      status.textContent = `Lỗi: ${err.message || 'Không thể kết nối tới máy chủ'}`;
+    }
+  }
+
   // Events
   btnLoad.addEventListener('click', loadFromFile);
   if (btnSave) btnSave.addEventListener('click', saveCardsToJson);
+  if (btnSaveToNotion) btnSaveToNotion.addEventListener('click', saveCardsToNotion);
   if (btnOpen) btnOpen.addEventListener('click', () => jsonFile && jsonFile.click());
-  if (btnOpenAppend) btnOpenAppend.addEventListener('click', () => jsonFileAppend && jsonFileAppend.click());
   fileInput.addEventListener('change', () => {
     status.textContent = '';
   });
-  if (jsonFileAppend) jsonFileAppend.addEventListener('change', async (e) => {
-    const f = e.target && e.target.files && e.target.files[0];
+  if (jsonFile) jsonFile.addEventListener('change', async () => {
+    const f = jsonFile.files && jsonFile.files[0];
     if (f) {
-      await openAdditionalCardsFromJson(f);
-      // reset input
-      jsonFileAppend.value = '';
-    }
-  });
-  if (jsonFile) jsonFile.addEventListener('change', () => {
-    if (jsonFile.files && jsonFile.files[0]) {
-      openCardsFromJson(jsonFile.files[0]);
+      // Respect append checkbox when opening JSON
+      const shouldAppend = !!(cards && cards.length && chkAppend && chkAppend.checked);
+      if (shouldAppend) {
+        await openAdditionalCardsFromJson(f);
+      } else {
+        await openCardsFromJson(f);
+      }
       // reset input so picking the same file again still triggers change
       jsonFile.value = '';
+    }
+  });
+  if (ghList) ghList.addEventListener('click', async (e) => {
+    e.preventDefault();
+    const t = e.target;
+    if (!t || !t.closest) return;
+    
+    // Handle folder navigation
+    const folderLink = t.closest('a.gh-folder');
+    if (folderLink) {
+      const path = folderLink.getAttribute('data-path') || '';
+      await loadGithubBrowser(path);
+      return;
+    }
+    
+    // Handle JSON file click
+    const jsonLink = t.closest('a.gh-json');
+    if (jsonLink) {
+      const url = jsonLink.getAttribute('data-url');
+      const name = jsonLink.getAttribute('data-name');
+      if (url) openCardsFromGithub(url, name);
     }
   });
 
@@ -1465,21 +1976,239 @@ start();
     startPractice();
   });
 
-  flipBtn.addEventListener('click', () => {
+  // Initialize speech synthesis
+  const synth = window.speechSynthesis;
+  let cachedVoices = [];
+  function loadVoices() {
+    try {
+      cachedVoices = synth ? synth.getVoices() : [];
+    } catch { cachedVoices = []; }
+  }
+  if (synth) {
+    loadVoices();
+    try { synth.addEventListener('voiceschanged', loadVoices); } catch {}
+  }
+  function isVietnameseText(t) {
+    // Remove content within parentheses before language detection
+    const cleanedText = String(t || '').replace(/\([^)]*\)/g, '').trim();
+    const s = cleanedText.toLowerCase();
+    if (!s) return false;
+    // Check for Vietnamese-specific diacritics and characters
+    const viChars = /[ăâđêôơưáàảãạắằẳẵặấầẩẫậéèẻẽẹếềểễệíìỉĩịóòỏõọốồổỗộớờởỡợúùủũụứừửữựýỳỷỹỵ]/i;
+    if (viChars.test(s)) return true;
+    // Fallback: common Vietnamese words
+    const viWords = /(\b)và\b|\bcủa\b|\blà\b|\bmột\b|\bnhững\b|\bcác\b|\bcho\b|\btừ\b|\btrong\b|\bkhi\b|\bđược\b|\bvới\b|\bkhông\b|\bnhư\b|\bđã\b|\bnày\b|\bđó\b|\bthì\b|\bđể\b|\bsẽ\b|\brất\b|\bcó\b|\bnhưng\b|\bhay\b|\bhoặc\b|\btôi\b|\bbạn\b|\bchúng\b|\bta\b/i;
+    return viWords.test(s);
+  }
+
+  // Function to speak text with auto language detection
+  function speakText(text) {
+    if (!text || !synth || !chkRead.checked) return;
+    
+    // Remove content within parentheses
+    const cleanedText = text.replace(/\([^)]*\)/g, '').trim();
+    if (!cleanedText) return;
+    
+    // Cancel any ongoing speech
+    try { synth.cancel(); } catch {}
+    
+    // Create a new speech utterance with cleaned text
+    const utterance = new SpeechSynthesisUtterance(cleanedText);
+    
+    // Decide desired language
+    const wantVi = isVietnameseText(text);
+    let voice = null;
+    const list = cachedVoices && cachedVoices.length ? cachedVoices : (synth ? synth.getVoices() : []);
+    if (wantVi) {
+      voice = (list || []).find(v => v && v.lang && v.lang.toLowerCase().startsWith('vi')) || null;
+      utterance.lang = 'vi-VN';
+    } else {
+      voice = (list || []).find(v => v && v.lang && v.lang.toLowerCase().startsWith('en')) || null;
+      utterance.lang = 'en-US';
+    }
+    if (!voice && list && list.length) voice = list[0];
+    if (voice) utterance.voice = voice;
+    
+    // Set speech properties
+    utterance.rate = 0.9;
+    utterance.pitch = 1.0;
+    
+    // Speak the text
+    try { synth.speak(utterance); } catch {}
+  }
+
+  // Create known button
+  const knownBtn = document.createElement('button');
+  knownBtn.id = 'knownBtn';
+  knownBtn.className = 'known-btn';
+  knownBtn.textContent = '✓';
+  knownBtn.style.position = 'absolute';
+  knownBtn.style.top = '10px';
+  knownBtn.style.right = '50px';
+  knownBtn.style.background = 'none';
+  knownBtn.style.border = 'none';
+  knownBtn.style.fontSize = '24px';
+  knownBtn.style.cursor = 'pointer';
+  knownBtn.style.zIndex = '10';
+  knownBtn.style.color = '#ccc';
+  knownBtn.title = 'Đánh dấu đã biết';
+  knownBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const currentCards = getCurrentCards();
+    
+    // Get the current card from the filtered list
+    const filteredCards = currentCards.filter((card) => {
+      const cardIndex = cards.findIndex(c => 
+        c.term === card.term && c.definition === card.definition
+      );
+      return !knownCards.has(cardIndex);
+    });
+    
+    if (filteredCards.length > 0 && idx >= 0 && idx < filteredCards.length) {
+      const currentCard = filteredCards[idx];
+      const cardIndex = cards.findIndex(card => 
+        card.term === currentCard.term && 
+        card.definition === currentCard.definition
+      );
+      
+      if (cardIndex !== -1) {
+        // Store the current card's index for comparison
+        const currentCardBeforeToggle = filteredCards[idx];
+        
+        // Toggle the known status
+        toggleKnown(cardIndex);
+        
+        // Re-render to update the UI with the new known status
+        renderStudy();
+        
+        // After rendering, check if we have a new card in this position
+        const currentCardsAfterToggle = getCurrentCards();
+        const newFilteredCards = currentCardsAfterToggle.filter(card => {
+          const idx = cards.findIndex(c => 
+            c.term === card.term && c.definition === card.definition
+          );
+          return !knownCards.has(idx);
+        });
+        
+        if (newFilteredCards.length > 0 && idx < newFilteredCards.length) {
+          const newCard = newFilteredCards[idx];
+          // If we have a new card in this position, read it aloud
+          if (!currentCardBeforeToggle || 
+              newCard.term !== currentCardBeforeToggle.term || 
+              newCard.definition !== currentCardBeforeToggle.definition) {
+            
+            // Use the same logic as in navigateCard to read the text
+            if (chkRead && chkRead.checked) {
+              const textToRead = studyDirection === 'def_to_term' ? 
+                (newCard.definition || '') : 
+                (newCard.term || '');
+              speakText(textToRead);
+            }
+          }
+        }
+      }
+    }
+  });
+  card.appendChild(knownBtn);
+
+  // Create star button
+  const starBtn = document.createElement('button');
+  starBtn.id = 'starBtn';
+  starBtn.className = 'star-btn';
+  starBtn.textContent = '☆';
+  starBtn.style.position = 'absolute';
+  starBtn.style.top = '10px';
+  starBtn.style.right = '10px';
+  starBtn.style.background = 'none';
+  starBtn.style.border = 'none';
+  starBtn.style.fontSize = '24px';
+  starBtn.style.cursor = 'pointer';
+  starBtn.style.zIndex = '10';
+  starBtn.style.color = '#ccc';
+  starBtn.title = 'Đánh dấu sao (chỉ lưu khi nhấn nút Lưu thẻ)';
+  starBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const currentCards = getCurrentCards();
+    if (currentCards.length > 0 && idx >= 0 && idx < currentCards.length) {
+      const currentCard = currentCards[idx];
+      const cardIndex = cards.findIndex(card => 
+        card.term === currentCard.term && 
+        card.definition === currentCard.definition
+      );
+      if (cardIndex !== -1) {
+        toggleStar(cardIndex);
+      }
+    }
+  });
+  card.appendChild(starBtn);
+  
+  // Add click handler to flip the card when clicked and read the text
+  card.addEventListener('click', () => {
     card.classList.toggle('flipped');
+    
+    // If the card is now flipped (showing back), read the back text
+    // If it was flipped and now showing front, read the front text
+    const textToRead = card.classList.contains('flipped') 
+      ? cardBack.textContent 
+      : cardFront.textContent;
+      
+    speakText(textToRead);
   });
+  
+  // Update card reading when direction changes
+  if (studyDirDefToTermBtn) {
+    studyDirDefToTermBtn.addEventListener('click', () => {
+      if (chkRead && chkRead.checked) {
+        speakText(cardFront.textContent);
+      }
+    });
+  }
+  
+  if (studyDirTermToDefBtn) {
+    studyDirTermToDefBtn.addEventListener('click', () => {
+      if (chkRead && chkRead.checked) {
+        speakText(cardFront.textContent);
+      }
+    });
+  }
 
-  prevBtn.addEventListener('click', () => {
-    if (!cards.length) return;
-    idx = (idx - 1 + cards.length) % cards.length;
-    renderStudy();
-  });
+  function navigateCard(offset) {
+    if (mode === 'study') {
+      const currentCards = getCurrentCards();
+      const filteredCards = currentCards.filter((_, index) => !knownCards.has(cards.indexOf(currentCards[index])));
+      
+      if (filteredCards.length === 0) {
+        // No more cards to show, reset known cards and start over
+        knownCards.clear();
+        idx = 0;
+      } else {
+        const isLastCard = idx === filteredCards.length - 1 && offset > 0;
+        const isFirstCard = idx === 0 && offset < 0;
+        
+        // Handle "Học tiếp" button
+        if (isLastCard && knownCards.size > 0) {
+          // Reset index and clear known cards for the next round
+          idx = 0;
+          knownCards.clear();
+        } else {
+          // Normal navigation
+          idx = (idx + offset + filteredCards.length) % filteredCards.length;
+        }
+      }
+      
+      renderStudy();
+      updateNextButtonText();
+      
+      // Read the front of the card if 'Đọc' is enabled
+      if (chkRead && chkRead.checked) {
+        const textToRead = cardFront.textContent;
+        speakText(textToRead);
+      }
+    }
+  }
 
-  nextBtn.addEventListener('click', () => {
-    if (!cards.length) return;
-    idx = (idx + 1) % cards.length;
-    renderStudy();
-  });
+  if (prevBtn) prevBtn.addEventListener('click', () => navigateCard(-1));
+  if (nextBtn) nextBtn.addEventListener('click', () => navigateCard(1));
 
   checkBtn.addEventListener('click', checkAnswer);
   skipBtn.addEventListener('click', skipQuestion);
@@ -1507,4 +2236,5 @@ start();
   if (modeExportBtn) modeExportBtn.addEventListener('click', () => {
     setMode('export');
   });
+  loadGithubBrowser();
 })();
