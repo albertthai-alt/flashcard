@@ -14,7 +14,6 @@
   let studyDirection = 'term_to_def'; // Default: Thuật ngữ -> Định nghĩa
   const btnLoad = $('#btnLoad');
   const btnSave = document.getElementById('btnSave');
-  const btnSaveToNotion = document.getElementById('btnSaveToNotion');
   const btnOpen = document.getElementById('btnOpen');
   const jsonFile = document.getElementById('jsonFile');
   const fileInput = $('#htmlFile');
@@ -1879,95 +1878,9 @@ start();
     });
   }
 
-  // Notion save functionality
-  const NOTION_API_ENDPOINT = 'https://flashcard-virid-chi.vercel.app/api/notion';
-  
-  async function saveCardsToNotion() {
-    if (!cards.length) {
-      status.textContent = 'Không có thẻ nào để lưu';
-      return;
-    }
-
-    const databaseId = prompt('Nhập ID của Notion database (để trống để tạo mới):');
-    
-    try {
-      status.textContent = 'Đang lưu vào Notion...';
-      
-      // If no database ID provided, create a new database
-      if (!databaseId || databaseId.trim() === '') {
-        // First, create a new database
-        const createDbResponse = await fetch(NOTION_API_ENDPOINT, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title: 'Flashcards ' + new Date().toLocaleDateString('vi-VN')
-          })
-        });
-
-        if (!createDbResponse.ok) {
-          const error = await createDbResponse.text();
-          throw new Error(`Lỗi tạo database mới: ${error}`);
-        }
-
-        const dbResult = await createDbResponse.json();
-        const newDbId = dbResult.database_id;
-        
-        if (!newDbId) {
-          throw new Error('Không nhận được ID database mới từ máy chủ');
-        }
-
-        // Then add cards to the new database
-        const addCardsResponse = await fetch(NOTION_API_ENDPOINT, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            database_id: newDbId,
-            cards: cards.map(card => ({
-              term: card.term,
-              definition: card.definition
-            }))
-          })
-        });
-
-        if (!addCardsResponse.ok) {
-          const error = await addCardsResponse.text();
-          throw new Error(`Lỗi thêm thẻ vào database mới: ${error}`);
-        }
-
-        const result = await addCardsResponse.json();
-        status.textContent = `Đã tạo database mới và lưu ${result.saved || 0} thẻ vào Notion`;
-      } else {
-        // If database ID is provided, add cards to existing database
-        const response = await fetch(NOTION_API_ENDPOINT, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            database_id: databaseId.trim(),
-            cards: cards.map(card => ({
-              term: card.term,
-              definition: card.definition
-            }))
-          })
-        });
-
-        if (!response.ok) {
-          const error = await response.text();
-          throw new Error(`Lỗi lưu vào database: ${error}`);
-        }
-
-        const result = await response.json();
-        status.textContent = `Đã lưu ${result.saved || 0} thẻ vào Notion database`;
-      }
-    } catch (err) {
-      console.error('Lỗi khi lưu vào Notion:', err);
-      status.textContent = `Lỗi: ${err.message || 'Không thể kết nối tới máy chủ'}`;
-    }
-  }
-
   // Events
   btnLoad.addEventListener('click', loadFromFile);
   if (btnSave) btnSave.addEventListener('click', saveCardsToJson);
-  if (btnSaveToNotion) btnSaveToNotion.addEventListener('click', saveCardsToNotion);
   if (btnOpen) btnOpen.addEventListener('click', () => jsonFile && jsonFile.click());
   fileInput.addEventListener('change', () => {
     status.textContent = '';
