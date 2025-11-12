@@ -2217,16 +2217,33 @@ start();
         }
 
         const databaseId = dbData.id;
-        showNotionStatus(`Đang lưu thẻ vào database: ${dbData.name}...`);
+        showNotionStatus(`Đang xóa dữ liệu cũ trong database: ${dbData.name}...`);
         
-        // 2. Filter out invalid cards
+        // 2. Clear existing database
+        const clearResponse = await fetch('/api/notion', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'clear_database',
+            database_id: databaseId
+          })
+        });
+        
+        if (!clearResponse.ok) {
+          const error = await clearResponse.json();
+          throw new Error(error.error || 'Không thể xóa dữ liệu cũ trong database');
+        }
+        
+        showNotionStatus(`Đang lưu thẻ mới vào database: ${dbData.name}...`);
+        
+        // 3. Filter out invalid cards
         const validCards = cards.filter(card => card.term && card.definition);
         
         if (validCards.length === 0) {
           throw new Error('Không có thẻ hợp lệ để lưu (cần có cả thuật ngữ và định nghĩa)');
         }
 
-        // 3. Save each card to Notion
+        // 4. Save each card to Notion
         let successCount = 0;
         const errors = [];
         

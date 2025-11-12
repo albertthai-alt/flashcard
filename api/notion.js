@@ -88,6 +88,40 @@ export default async function handler(req, res) {
       return res.status(response.status).json(data);
     }
 
+    // Clear all pages in a database
+    if (action === 'clear_database' && body.database_id) {
+      // First, get all pages in the database
+      const queryResponse = await fetch(`https://api.notion.com/v1/databases/${body.database_id}/query`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({})
+      });
+      
+      if (!queryResponse.ok) {
+        const error = await queryResponse.json();
+        throw new Error(error.message || 'Failed to query database');
+      }
+      
+      const { results: pages } = await queryResponse.json();
+      
+      // Delete all pages
+      const deletePromises = pages.map(page => 
+        fetch(`https://api.notion.com/v1/pages/${page.id}`, {
+          method: 'PATCH',
+          headers: {
+            ...headers,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            archived: true
+          })
+        })
+      );
+      
+      await Promise.all(deletePromises);
+      return res.status(200).json({ ok: true, deleted: pages.length });
+    }
+
     // Find or create database by name
     if (action === 'find_or_create_database') {
       const { database_name: databaseName } = req.body;
