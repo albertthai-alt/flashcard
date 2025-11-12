@@ -25,6 +25,7 @@
         <input id="htmlFile" type="file" accept=".html,.htm,text/html" />
         <button id="btnLoad" type="button" class="primary-btn">Tải thẻ Quizlet</button>
         <button id="btnSave" type="button" class="secondary-btn">Lưu thẻ</button>
+        <button id="btnSaveNotion" type="button" class="secondary-btn">Lưu vào Notion</button>
         <button id="btnOpen" type="button" class="secondary-btn">Mở thẻ</button>
         <label style="display:flex; align-items:center; gap:6px;">
           <input id="chkAppend" type="checkbox" />
@@ -144,6 +145,33 @@
       <div>Tác giả: Albert Thai</div>
     </footer>
   </div>
+  <!-- Notion Database Selection Modal -->
+  <div id="notionModal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <span class="close-btn">&times;</span>
+      <h3>Lưu thẻ vào Notion</h3>
+      <div class="form-group">
+        <label for="notionToken">Notion Token (bí mật):</label>
+        <input type="password" id="notionToken" class="url-input" placeholder="Nhập Notion Token" />
+        <div class="hint">Lấy token từ <a href="https://www.notion.so/my-integrations" target="_blank" style="color: #4e54c8; text-decoration: underline;">Notion Integrations</a></div>
+      </div>
+      <div class="form-group">
+        <label for="notionDbId">ID Database:</label>
+        <input type="text" id="notionDbId" class="url-input" placeholder="Nhập ID Database" />
+        <div class="hint">Lấy ID từ URL của database trong Notion</div>
+      </div>
+      <div class="form-group">
+        <button id="btnLoadNotionDbs" class="secondary-btn">Tải danh sách Database</button>
+      </div>
+      <div id="notionDbList" class="db-list"></div>
+      <div class="form-actions">
+        <button id="btnSaveToNotion" class="primary-btn" disabled>Lưu vào Notion</button>
+        <button id="btnCancelNotion" class="secondary-btn">Hủy</button>
+      </div>
+      <div id="notionStatus" class="status"></div>
+    </div>
+  </div>
+
   <script src="./app.js"></script>
 </body>
 </html>

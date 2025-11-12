@@ -1996,6 +1996,246 @@ start();
   const knownBtn = document.createElement('button');
   knownBtn.id = 'knownBtn';
   knownBtn.className = 'known-btn';
+
+  // Notion integration
+  const notionModal = document.getElementById('notionModal');
+  const btnSaveNotion = document.getElementById('btnSaveNotion');
+  const btnCloseNotion = document.querySelector('.close-btn');
+  const btnCancelNotion = document.getElementById('btnCancelNotion');
+  const btnLoadNotionDbs = document.getElementById('btnLoadNotionDbs');
+  const btnSaveToNotion = document.getElementById('btnSaveToNotion');
+  const notionTokenInput = document.getElementById('notionToken');
+  const notionDbIdInput = document.getElementById('notionDbId');
+  const notionDbList = document.getElementById('notionDbList');
+  const notionStatus = document.getElementById('notionStatus');
+
+  let selectedDbId = '';
+  let selectedDbName = '';
+
+  // Show Notion modal
+  if (btnSaveNotion) {
+    btnSaveNotion.addEventListener('click', () => {
+      notionModal.style.display = 'block';
+      document.body.style.overflow = 'hidden'; // Prevent scrolling
+    });
+  }
+
+  // Close modal functions
+  function closeNotionModal() {
+    notionModal.style.display = 'none';
+    document.body.style.overflow = 'auto';
+  }
+
+  if (btnCloseNotion) btnCloseNotion.addEventListener('click', closeNotionModal);
+  if (btnCancelNotion) btnCancelNotion.addEventListener('click', closeNotionModal);
+
+  // Close modal when clicking outside
+  window.addEventListener('click', (e) => {
+    if (e.target === notionModal) {
+      closeNotionModal();
+    }
+  });
+
+  // Load Notion databases
+  if (btnLoadNotionDbs) {
+    btnLoadNotionDbs.addEventListener('click', async () => {
+      const token = notionTokenInput.value.trim();
+      if (!token) {
+        showNotionStatus('Vui lòng nhập Notion Token', 'error');
+        return;
+      }
+
+      try {
+        showNotionStatus('Đang tải danh sách database...');
+        const response = await fetch('/api/notion', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            action: 'list_databases'
+          })
+        });
+
+        if (!response.ok) {
+          const error = await response.text();
+          throw new Error(error || 'Không thể tải danh sách database');
+        }
+
+        const data = await response.json();
+        renderDatabaseList(data.results || []);
+      } catch (error) {
+        console.error('Error loading Notion databases:', error);
+        showNotionStatus(`Lỗi: ${error.message || 'Không thể tải danh sách database'}`, 'error');
+      }
+    });
+  }
+
+  // Render database list
+  function renderDatabaseList(databases) {
+    if (!databases.length) {
+      notionDbList.innerHTML = '<div class="hint">Không tìm thấy database nào. Vui lòng kiểm tra lại token và quyền truy cập.</div>';
+      return;
+    }
+
+    const html = databases.map(db => {
+      const title = (db.title && db.title[0] && db.title[0].plain_text) || 'Untitled';
+      const id = db.id;
+      return `
+        <div class="db-item" data-id="${id}">
+          <h4>${escapeHtml(title)}</h4>
+          <p>ID: ${id}</p>
+        </div>
+      `;
+    }).join('');
+
+    notionDbList.innerHTML = html;
+
+    // Add click handlers
+    document.querySelectorAll('.db-item').forEach(item => {
+      item.addEventListener('click', () => {
+        document.querySelectorAll('.db-item').forEach(i => i.classList.remove('selected'));
+        item.classList.add('selected');
+        selectedDbId = item.getAttribute('data-id');
+        selectedDbName = item.querySelector('h4').textContent;
+        notionDbIdInput.value = selectedDbId;
+        btnSaveToNotion.disabled = false;
+      });
+    });
+  }
+
+  // Save cards to Notion
+  if (btnSaveToNotion) {
+    btnSaveToNotion.addEventListener('click', async () => {
+      const token = notionTokenInput.value.trim();
+      const dbId = notionDbIdInput.value.trim();
+      
+      if (!token || !dbId) {
+        showNotionStatus('Vui lòng nhập đầy đủ thông tin', 'error');
+        return;
+      }
+
+      if (!cards.length) {
+        showNotionStatus('Không có thẻ nào để lưu', 'error');
+        return;
+      }
+
+      try {
+        showNotionStatus('Đang lưu thẻ vào Notion...');
+        
+        // Filter out cards that don't have both term and definition
+        const validCards = cards.filter(card => card.term && card.definition);
+        
+        if (validCards.length === 0) {
+          throw new Error('Không có thẻ hợp lệ để lưu (cần có cả thuật ngữ và định nghĩa)');
+        }
+
+        // Save each card to Notion
+        let successCount = 0;
+        const errors = [];
+        
+        for (const [index, card] of validCards.entries()) {
+          try {
+            const response = await fetch('/api/notion', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                action: 'create_page',
+                database_id: dbId,
+                properties: {
+                  'Name': {
+                    'title': [
+                      {
+                        'text': {
+                          'content': card.term.substring(0, 200) // Limit title length
+                        }
+                      }
+                    ]
+                  },
+                  'Definition': {
+                    'rich_text': [
+                      {
+                        'text': {
+                          'content': card.definition
+                        }
+                      }
+                    ]
+                  },
+                  'Term': {
+                    'rich_text': [
+                      {
+                        'text': {
+                          'content': card.term
+                        }
+                      }
+                    ]
+                  }
+                }
+              })
+            });
+
+            if (!response.ok) {
+              const error = await response.text();
+              throw new Error(error || `Lỗi khi lưu thẻ ${index + 1}`);
+            }
+
+            successCount++;
+            // Update progress
+            showNotionStatus(`Đang lưu thẻ ${index + 1}/${validCards.length}...`);
+          } catch (error) {
+            errors.push(`Thẻ ${index + 1}: ${error.message}`);
+            console.error(`Error saving card ${index + 1}:`, error);
+          }
+        }
+
+        // Show results
+        if (successCount > 0) {
+          const successMsg = `Đã lưu thành công ${successCount} thẻ vào Notion`;
+          const errorMsg = errors.length > 0 ? `\n\nCó ${errors.length} lỗi:\n${errors.join('\n')}` : '';
+          showNotionStatus(successMsg + errorMsg, errors.length > 0 ? 'warning' : 'success');
+          
+          // Auto-close after success
+          if (errors.length === 0) {
+            setTimeout(closeNotionModal, 2000);
+          }
+        } else {
+          throw new Error(`Không thể lưu bất kỳ thẻ nào. Lỗi:\n${errors.join('\n')}`);
+        }
+      } catch (error) {
+        console.error('Error saving to Notion:', error);
+        showNotionStatus(`Lỗi: ${error.message || 'Không thể lưu thẻ vào Notion'}`, 'error');
+      }
+    });
+  }
+
+  // Helper function to show status messages
+  function showNotionStatus(message, type = '') {
+    if (!notionStatus) return;
+    
+    notionStatus.textContent = message;
+    notionStatus.className = 'status';
+    
+    if (type === 'error') {
+      notionStatus.classList.add('error');
+    } else if (type === 'success') {
+      notionStatus.classList.add('success');
+    } else if (type === 'warning') {
+      notionStatus.style.color = '#ff9800';
+    }
+    
+    // Auto-hide success messages after 5 seconds
+    if (type === 'success') {
+      setTimeout(() => {
+        if (notionStatus.textContent === message) {
+          notionStatus.textContent = '';
+        }
+      }, 5000);
+    }
+  }
   knownBtn.textContent = '✓';
   knownBtn.style.position = 'absolute';
   knownBtn.style.top = '10px';
