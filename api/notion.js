@@ -146,12 +146,13 @@ export default async function handler(req, res) {
           name: databaseName,
           created: true
         });
+      } catch (error) {
+        console.error('Error finding/creating Notion database:', error);
+        return res.status(500).json({ 
+          ok: false, 
+          error: error.message || 'Error processing request' 
+        });
       }
-
-      return res.status(404).json({
-        ok: false,
-        error: "Database not found and no parent page provided to create one"
-      });
     }
 
     // Default search behavior for backward compatibility

@@ -2030,86 +2030,9 @@ start();
     }
   });
 
-  // Load Notion databases
-  if (btnLoadNotionDbs) {
-    btnLoadNotionDbs.addEventListener('click', async () => {
-      const dbName = notionDbNameInput.value.trim();
-      if (!dbName) {
-        showNotionStatus('Vui lòng nhập tên database', 'error');
-        return;
-      }
+  // Database search and creation is now handled automatically when saving
 
-      try {
-        showNotionStatus('Đang tìm kiếm database...');
-        const response = await fetch('/api/notion', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            action: 'find_or_create_database',
-            database_name: dbName,
-            parent_page_id: notionParentPageIdInput.value.trim() || undefined
-          })
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || 'Không thể tìm hoặc tạo database');
-        }
-
-        // Show the found/created database
-        renderDatabaseList([{
-          id: data.id,
-          title: [{ plain_text: data.name }],
-          created: data.created
-        }]);
-        
-        if (data.created) {
-          showNotionStatus(`Đã tạo database mới: ${data.name}`, 'success');
-        } else {
-          showNotionStatus(`Đã tìm thấy database: ${data.name}`, 'success');
-        }
-      } catch (error) {
-        console.error('Error with Notion database:', error);
-        showNotionStatus(`Lỗi: ${error.message || 'Không thể xử lý yêu cầu'}`, 'error');
-      }
-    });
-  }
-
-  // Render database list
-  function renderDatabaseList(databases) {
-    if (!databases.length) {
-      notionDbList.innerHTML = '<div class="hint">Không tìm thấy database nào. Vui lòng kiểm tra lại token và quyền truy cập.</div>';
-      return;
-    }
-
-    const html = databases.map(db => {
-      const title = (db.title && db.title[0] && db.title[0].plain_text) || 'Untitled';
-      const id = db.id;
-      return `
-        <div class="db-item" data-id="${id}">
-          <h4>${escapeHtml(title)}</h4>
-          <p>ID: ${id}</p>
-        </div>
-      `;
-    }).join('');
-
-    notionDbList.innerHTML = html;
-
-    // Add click handlers
-    document.querySelectorAll('.db-item').forEach(item => {
-      item.addEventListener('click', () => {
-        document.querySelectorAll('.db-item').forEach(i => i.classList.remove('selected'));
-        item.classList.add('selected');
-        selectedDbId = item.getAttribute('data-id');
-        selectedDbName = item.querySelector('h4').textContent;
-        notionDbIdInput.value = selectedDbId;
-        btnSaveToNotion.disabled = false;
-      });
-    });
-  }
+  // Database list rendering is no longer needed in the simplified UI
 
   // Save cards to Notion
   if (btnSaveToNotion) {
