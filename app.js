@@ -2239,14 +2239,19 @@ start();
                 action: 'create_page',
                 database_id: databaseId,
                 properties: {
-                  'Term': {
+                  'Name': {
                     'title': [
-                      { 'text': { 'content': card.term.substring(0, 200) } }
+                      { 'text': { 'content': `Card ${index + 1}` } }
                     ]
                   },
                   'Definition': {
                     'rich_text': [
                       { 'text': { 'content': card.definition } }
+                    ]
+                  },
+                  'Term': {
+                    'rich_text': [
+                      { 'text': { 'content': card.term } }
                     ]
                   }
                 }
