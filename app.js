@@ -2108,7 +2108,7 @@ start();
         setTitle.textContent = databaseName || 'Notion Database';
         showNotionStatus(`Đã tải ${newCards.length} thẻ từ Notion`, 'success');
         // Switch to study view
-        switchMode('study');
+        setMode('study');
       }
 
       // Update UI
