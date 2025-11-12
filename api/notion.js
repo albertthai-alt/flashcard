@@ -40,18 +40,50 @@ export default async function handler(req, res) {
 
     // List databases with optional query
     if (action === 'list_databases') {
+      // First, get all databases (empty query to get all)
       const response = await fetch("https://api.notion.com/v1/search", {
         method: "POST",
         headers,
         body: JSON.stringify({
           filter: { property: "object", value: "database" },
-          query: body.query,
           page_size: 100
         })
       });
       
-      const data = await response.json();
-      return res.status(response.status).json(data);
+      if (!response.ok) {
+        const error = await response.json();
+        return res.status(response.status).json({ ok: false, error: error.message || 'Failed to search databases' });
+      }
+      
+      let data = await response.json();
+      
+      // Filter results client-side to ensure exact matching
+      if (body.query && body.query.trim()) {
+        const searchTerm = body.query.trim().toLowerCase();
+        data.results = data.results.filter(database => {
+          // Check both title and URL for matches
+          const title = database.title?.[0]?.plain_text?.toLowerCase() || '';
+          const url = database.url?.toLowerCase() || '';
+          
+          // Check if the title or URL contains the search term as a whole word
+          // This ensures 'A1' matches 'A1' and 'A11' but not 'A2'
+          const titleMatch = title.includes(searchTerm) && 
+            (title === searchTerm || 
+             title.startsWith(searchTerm) || 
+             title.includes(' ' + searchTerm) || 
+             title.includes('-' + searchTerm) ||
+             title.includes('_' + searchTerm));
+             
+          const urlMatch = url.includes(searchTerm.toLowerCase()) && 
+            (url.endsWith('/' + searchTerm.toLowerCase()) || 
+             url.endsWith('-' + searchTerm.toLowerCase()) ||
+             url.endsWith('_' + searchTerm.toLowerCase()));
+             
+          return titleMatch || urlMatch;
+        });
+      }
+      
+      return res.status(200).json(data);
     }
 
     // Query a database
