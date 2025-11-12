@@ -1895,11 +1895,33 @@ start();
       
       // If no database ID provided, create a new database
       if (!databaseId || databaseId.trim() === '') {
-        const response = await fetch(NOTION_API_ENDPOINT, {
+        // First, create a new database
+        const createDbResponse = await fetch(NOTION_API_ENDPOINT, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            title: 'Flashcards ' + new Date().toLocaleDateString('vi-VN'),
+            title: 'Flashcards ' + new Date().toLocaleDateString('vi-VN')
+          })
+        });
+
+        if (!createDbResponse.ok) {
+          const error = await createDbResponse.text();
+          throw new Error(`Lỗi tạo database mới: ${error}`);
+        }
+
+        const dbResult = await createDbResponse.json();
+        const newDbId = dbResult.database_id;
+        
+        if (!newDbId) {
+          throw new Error('Không nhận được ID database mới từ máy chủ');
+        }
+
+        // Then add cards to the new database
+        const addCardsResponse = await fetch(NOTION_API_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            database_id: newDbId,
             cards: cards.map(card => ({
               term: card.term,
               definition: card.definition
@@ -1907,12 +1929,12 @@ start();
           })
         });
 
-        if (!response.ok) {
-          const error = await response.text();
-          throw new Error(`Lỗi tạo database mới: ${error}`);
+        if (!addCardsResponse.ok) {
+          const error = await addCardsResponse.text();
+          throw new Error(`Lỗi thêm thẻ vào database mới: ${error}`);
         }
 
-        const result = await response.json();
+        const result = await addCardsResponse.json();
         status.textContent = `Đã tạo database mới và lưu ${result.saved || 0} thẻ vào Notion`;
       } else {
         // If database ID is provided, add cards to existing database
