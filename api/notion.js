@@ -38,14 +38,34 @@ export default async function handler(req, res) {
     // Handle different actions
     const { action } = body;
 
-    // List databases
+    // List databases with optional query
     if (action === 'list_databases') {
       const response = await fetch("https://api.notion.com/v1/search", {
         method: "POST",
         headers,
         body: JSON.stringify({
           filter: { property: "object", value: "database" },
+          query: body.query,
           page_size: 100
+        })
+      });
+      
+      const data = await response.json();
+      return res.status(response.status).json(data);
+    }
+
+    // Query a database
+    if (action === 'query_database' && body.database_id) {
+      const response = await fetch(`https://api.notion.com/v1/databases/${body.database_id}/query`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          sorts: [
+            {
+              timestamp: 'created_time',
+              direction: 'ascending'
+            }
+          ]
         })
       });
       

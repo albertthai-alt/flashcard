@@ -2003,6 +2003,9 @@ start();
   const btnCloseNotion = document.querySelector('.close-btn');
   const btnCancelNotion = document.getElementById('btnCancelNotion');
   const btnSaveToNotion = document.getElementById('btnSaveToNotion');
+  const btnSearchNotion = document.getElementById('btnSearchNotion');
+  const notionSearchInput = document.getElementById('notionSearchInput');
+  const notionDbList = document.getElementById('notionDbList');
   const notionDbNameInput = document.getElementById('notionDbName');
   const notionStatus = document.getElementById('notionStatus');
 
@@ -2032,7 +2035,151 @@ start();
 
   // Database search and creation is now handled automatically when saving
 
-  // Database list rendering is no longer needed in the simplified UI
+  // Search Notion databases
+  async function searchNotionDatabases(query = '') {
+    try {
+      const response = await fetch('/api/notion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'list_databases',
+          query: query || undefined
+        })
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Không thể tải danh sách database');
+      }
+
+      return data.results || [];
+    } catch (error) {
+      console.error('Error searching Notion databases:', error);
+      showStatus('Lỗi khi tìm kiếm database: ' + (error.message || 'Lỗi không xác định'), 'error');
+      return [];
+    }
+  }
+
+  // Load cards from Notion database
+  async function loadCardsFromNotion(databaseId, databaseName) {
+    try {
+      showStatus('Đang tải thẻ từ Notion...');
+      
+      // Query the database to get all cards
+      const response = await fetch('/api/notion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'query_database',
+          database_id: databaseId
+        })
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Không thể tải dữ liệu từ database');
+      }
+
+      // Convert Notion pages to flashcard format
+      const newCards = (data.results || []).map(page => {
+        const props = page.properties || {};
+        return {
+          term: props.Term?.rich_text?.[0]?.plain_text || '',
+          definition: props.Definition?.rich_text?.[0]?.plain_text || '',
+          starred: false,
+          timestamp: new Date().toISOString()
+        };
+      }).filter(card => card.term || card.definition);
+
+      if (newCards.length === 0) {
+        throw new Error('Không tìm thấy thẻ nào trong database này');
+      }
+
+      // Check if we should append to existing cards
+      const shouldAppend = cards && cards.length && chkAppend && chkAppend.checked;
+      
+      if (shouldAppend) {
+        cards = (cards || []).concat(newCards);
+        showStatus(`Đã thêm ${newCards.length} thẻ từ Notion database "${databaseName}"`, 'success');
+      } else {
+        cards = newCards;
+        setTitle.textContent = databaseName || 'Notion Database';
+        showStatus(`Đã tải ${newCards.length} thẻ từ Notion`, 'success');
+        // Switch to study view
+        switchMode('study');
+      }
+
+      // Update UI
+      countEl.textContent = String(cards.length);
+      meta.hidden = false;
+      if (modeSwitch) modeSwitch.hidden = false;
+      
+      // Reset to first card
+      idx = 0;
+      renderStudy();
+      
+    } catch (error) {
+      console.error('Error loading cards from Notion:', error);
+      showStatus('Lỗi khi tải thẻ từ Notion: ' + (error.message || 'Lỗi không xác định'), 'error');
+    }
+  }
+
+  // Render database list
+  function renderDatabaseList(databases) {
+    if (!notionDbList) return;
+    
+    if (!databases || databases.length === 0) {
+      notionDbList.innerHTML = '<div class="hint">Không tìm thấy database nào.</div>';
+      return;
+    }
+
+    const html = databases.map(db => {
+      const name = db.title?.[0]?.plain_text || 'Không có tên';
+      const id = db.id;
+      return `
+        <div class="db-item" style="flex: 1 1 300px; padding: 10px; border: 1px solid #e0e0e0; border-radius: 4px; cursor: pointer;" 
+             data-id="${id}" data-name="${name}">
+          <div style="font-weight: bold;">${name}</div>
+          <div style="font-size: 0.8em; color: #666; margin-top: 4px;">
+            ID: ${id.substring(0, 8)}...
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    notionDbList.innerHTML = html;
+
+    // Add click handlers
+    document.querySelectorAll('.db-item').forEach(item => {
+      item.addEventListener('click', async () => {
+        const dbId = item.getAttribute('data-id');
+        const dbName = item.getAttribute('data-name');
+        await loadCardsFromNotion(dbId, dbName);
+      });
+    });
+  }
+
+  // Event listeners for Notion search
+  if (btnSearchNotion) {
+    btnSearchNotion.addEventListener('click', async () => {
+      const query = notionSearchInput.value.trim();
+      const databases = await searchNotionDatabases(query);
+      renderDatabaseList(databases);
+    });
+
+    // Also search on Enter key
+    if (notionSearchInput) {
+      notionSearchInput.addEventListener('keypress', async (e) => {
+        if (e.key === 'Enter') {
+          const query = notionSearchInput.value.trim();
+          const databases = await searchNotionDatabases(query);
+          renderDatabaseList(databases);
+        }
+      });
+    }
+  }
 
   // Save cards to Notion
   if (btnSaveToNotion) {
