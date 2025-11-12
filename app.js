@@ -1888,34 +1888,54 @@ start();
       return;
     }
 
-    const databaseId = prompt('Nhập ID của Notion database:');
-    if (!databaseId) return;
-
-    status.textContent = 'Đang lưu vào Notion...';
+    const databaseId = prompt('Nhập ID của Notion database (để trống để tạo mới):');
     
     try {
-      const response = await fetch(NOTION_API_ENDPOINT, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'create',
-          database_id: databaseId.trim(),
-          cards: cards.map(card => ({
-            term: card.term,
-            definition: card.definition
-          }))
-        })
-      });
+      status.textContent = 'Đang lưu vào Notion...';
+      
+      // If no database ID provided, create a new database
+      if (!databaseId || databaseId.trim() === '') {
+        const response = await fetch(NOTION_API_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: 'Flashcards ' + new Date().toLocaleDateString('vi-VN'),
+            cards: cards.map(card => ({
+              term: card.term,
+              definition: card.definition
+            }))
+          })
+        });
 
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`Lỗi từ máy chủ: ${error}`);
+        if (!response.ok) {
+          const error = await response.text();
+          throw new Error(`Lỗi tạo database mới: ${error}`);
+        }
+
+        const result = await response.json();
+        status.textContent = `Đã tạo database mới và lưu ${result.saved || 0} thẻ vào Notion`;
+      } else {
+        // If database ID is provided, add cards to existing database
+        const response = await fetch(NOTION_API_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            database_id: databaseId.trim(),
+            cards: cards.map(card => ({
+              term: card.term,
+              definition: card.definition
+            }))
+          })
+        });
+
+        if (!response.ok) {
+          const error = await response.text();
+          throw new Error(`Lỗi lưu vào database: ${error}`);
+        }
+
+        const result = await response.json();
+        status.textContent = `Đã lưu ${result.saved || 0} thẻ vào Notion database`;
       }
-
-      const result = await response.json();
-      status.textContent = `Đã lưu ${result.saved || 0} thẻ vào Notion`;
     } catch (err) {
       console.error('Lỗi khi lưu vào Notion:', err);
       status.textContent = `Lỗi: ${err.message || 'Không thể kết nối tới máy chủ'}`;
