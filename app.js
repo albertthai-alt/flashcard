@@ -2216,6 +2216,12 @@ start();
   // Save cards to Notion
   if (btnSaveToNotion) {
     btnSaveToNotion.addEventListener('click', async () => {
+      // Pre-fill with current set title if available
+      const currentTitle = setTitle?.textContent?.trim() || '';
+      if (currentTitle && (!notionDbNameInput.value || notionDbNameInput.value === '')) {
+        notionDbNameInput.value = currentTitle;
+      }
+      
       const dbName = notionDbNameInput.value.trim();
       
       if (!dbName) {
