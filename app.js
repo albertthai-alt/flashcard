@@ -1247,44 +1247,64 @@ start();
     // Effective correctness considers summaryOverrides
     const correct = Array.from(groups.entries()).filter(([idx, g]) => g.correctFirstTry || !!summaryOverrides.get(idx)).length;
     const percent = totalCards ? Math.round((correct / totalCards) * 100) : 0;
-    if (summaryHeader) {
+    
+    // Update test results in the summary view only
+    const testResultsHeader = document.querySelector('#summaryView .summary-header');
+    if (testResultsHeader) {
       const label = (mode === 'practice') ? 'Kết quả thực hành' : 'Kết quả kiểm tra';
-      summaryHeader.innerHTML = `
-        <div>${label} — Đúng: ${correct}/${totalCards} (${percent}%)</div>
-        <button id="starWrongBtn" class="secondary-btn" style="margin-left: 10px;">
-          Đánh dấu sao các câu sai
-        </button>
-      `;
+      testResultsHeader.textContent = `${label} — Đúng: ${correct}/${totalCards} (${percent}%)`;
+    }
+    
+    // Add star wrong answers button to the summary-actions div if it exists
+    const summaryActions = document.querySelector('.summary-actions');
+    if (summaryActions) {
+      // Remove existing star button if it exists
+      const existingBtn = document.getElementById('starWrongBtn');
+      if (existingBtn) {
+        existingBtn.remove();
+      }
+      
+      // Create and append the star wrong answers button
+      const starWrongBtn = document.createElement('button');
+      starWrongBtn.id = 'starWrongBtn';
+      starWrongBtn.className = 'secondary-btn';
+      starWrongBtn.textContent = 'Đánh dấu sao các câu sai';
       
       // Add click handler for the star wrong answers button
-      const starWrongBtn = document.getElementById('starWrongBtn');
-      if (starWrongBtn) {
-        starWrongBtn.addEventListener('click', () => {
-          // Get all incorrect answers
-          const incorrectIndices = Array.from(groups.entries())
-            .filter(([idx, g]) => !g.correctFirstTry)
-            .map(([idx]) => idx);
-          
-          // Mark them as starred
-          incorrectIndices.forEach(idx => {
-            if (cards[idx]) {
-              cards[idx].starred = true;
-            }
-          });
-          
-          // Show feedback
-          const feedback = document.createElement('div');
-          feedback.textContent = `Đã đánh dấu sao ${incorrectIndices.length} câu sai.`;
-          feedback.style.marginTop = '10px';
-          feedback.style.color = '#0a7f2d';
-          summaryHeader.appendChild(feedback);
-          
-          // Remove feedback after 3 seconds
-          setTimeout(() => {
-            feedback.remove();
-          }, 3000);
+      starWrongBtn.addEventListener('click', () => {
+        // Get all incorrect answers
+        const incorrectIndices = Array.from(groups.entries())
+          .filter(([idx, g]) => !g.correctFirstTry)
+          .map(([idx]) => idx);
+        
+        // Mark them as starred
+        incorrectIndices.forEach(idx => {
+          if (cards[idx]) {
+            cards[idx].starred = true;
+          }
         });
-      }
+        
+        // Show feedback
+        const feedback = document.createElement('div');
+        feedback.textContent = `Đã đánh dấu sao ${incorrectIndices.length} câu sai.`;
+        feedback.style.marginTop = '10px';
+        feedback.style.color = '#0a7f2d';
+        feedback.style.width = '100%';
+        feedback.style.textAlign = 'center';
+        
+        // Insert feedback after the button
+        summaryActions.parentNode.insertBefore(feedback, summaryActions.nextSibling);
+        
+        // Remove feedback after 3 seconds
+        setTimeout(() => {
+          if (feedback.parentNode) {
+            feedback.parentNode.removeChild(feedback);
+          }
+        }, 3000);
+      });
+      
+      // Add the button to the summary actions
+      summaryActions.appendChild(starWrongBtn);
     }
     const items = Array.from(groups.entries()).map(function(entry, i) {
       const idx = entry[0];
@@ -2135,25 +2155,37 @@ start();
       return;
     }
 
+    // Sort databases alphabetically by name
+    databases.sort((a, b) => {
+      const nameA = (a.title?.[0]?.plain_text || '').toLowerCase();
+      const nameB = (b.title?.[0]?.plain_text || '').toLowerCase();
+      return nameA.localeCompare(nameB, 'vi');
+    });
+
     const html = databases.map(db => {
       const name = db.title?.[0]?.plain_text || 'Không có tên';
       const id = db.id;
       return `
-        <div class="db-item" style="flex: 1 1 300px; padding: 10px; border: 1px solid #e0e0e0; border-radius: 4px; cursor: pointer;" 
-             data-id="${id}" data-name="${name}">
-          <div style="font-weight: bold;">${name}</div>
-          <div style="font-size: 0.8em; color: #666; margin-top: 4px;">
-            ID: ${id.substring(0, 8)}...
-          </div>
-        </div>
+        <a href="#" class="gh-file" data-id="${id}" data-name="${name}" 
+           style="display:inline-flex;align-items:center;padding:6px 10px;margin:0 5px 5px 0;border:1px solid #3b82f6;border-radius:8px;background:rgba(59,130,246,0.1);color:#60a5fa;text-decoration:none;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:5px;">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 8 9 8 17"></polyline>
+          </svg>
+          ${name}
+        </a>
       `;
     }).join('');
 
     notionDbList.innerHTML = html;
 
     // Add click handlers
-    document.querySelectorAll('.db-item').forEach(item => {
-      item.addEventListener('click', async () => {
+    document.querySelectorAll('.gh-file').forEach(item => {
+      item.addEventListener('click', async (e) => {
+        e.preventDefault();
         const dbId = item.getAttribute('data-id');
         const dbName = item.getAttribute('data-name');
         await loadCardsFromNotion(dbId, dbName);
