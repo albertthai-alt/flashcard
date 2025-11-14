@@ -607,8 +607,11 @@ start();
   function saveCardsToJson() {
     if (!cards.length) return;
     
+    // Get the title from setTitle div or use a default
+    const title = setTitle.textContent.trim() || 'Flashcards';
+    
     const data = {
-      title: setTitle.value || 'Flashcards',
+      title: title,  // Use the title from setTitle
       cards: cards.map(c => ({
         term: c.term,
         definition: c.definition,
@@ -617,7 +620,9 @@ start();
         timestamp: c.timestamp || new Date().toISOString()
       }))
     };
-    const safeTitle = (data.title || 'bo-the').replace(/[^\w\-]+/g, '_').slice(0, 50);
+    
+    // Create a safe filename from the title
+    const safeTitle = title.replace(/[^\w\-]+/g, '_').slice(0, 50);
     const filename = (safeTitle || 'bo-the') + '.json';
     const ok = download(filename, JSON.stringify(data, null, 2));
     if (ok) {
@@ -2064,6 +2069,14 @@ start();
   // Show Notion modal
   if (btnSaveNotion) {
     btnSaveNotion.addEventListener('click', () => {
+      const notionDbNameInput = document.getElementById('notionDbName');
+      const setTitle = document.getElementById('setTitle');
+      
+      // Auto-fill the database name with the current set title if available
+      if (notionDbNameInput && setTitle && setTitle.textContent) {
+        notionDbNameInput.value = setTitle.textContent.trim();
+      }
+      
       notionModal.style.display = 'block';
       document.body.style.overflow = 'hidden'; // Prevent scrolling
     });
