@@ -612,7 +612,8 @@ start();
       cards: cards.map(c => ({
         term: c.term,
         definition: c.definition,
-        starred: !!c.starred,  // Include star status when saving
+        points: c.points || 0,  // Include points when saving
+        starred: !!c.starred,   // Include star status when saving
         timestamp: c.timestamp || new Date().toISOString()
       }))
     };
@@ -639,6 +640,7 @@ start();
       const normalized = list.map((c) => ({
         term: (c && (c.term || c.front || c.word)) || '',
         definition: (c && (c.definition || c.back)) || '',
+        points: (c && (c.points || 0)) || 0, // Load points if available, default to 0
         starred: !!c.starred,
         timestamp: c.timestamp || new Date().toISOString()
       })).filter((c) => c.term || c.definition);
@@ -1099,24 +1101,36 @@ start();
     if (got && expected && (got === expected)) {
       // If previously wrong for this card, do not increase score; allow advance for learning purposes
       if (currentWasWrong) {
-        testFeedback.textContent = 'Đúng (sau khi sai lần đầu). Không tính điểm, tiếp tục học.';
+        testFeedback.textContent = 'Đúng (sau khi sai lần đầu). Không tính điểm.';
         testFeedback.classList.remove('error');
         testFeedback.classList.add('success');
-        // Do not record the corrective attempt in any mode; only the first wrong attempt should be kept for test mode
+        // Only add this result if we haven't seen this card before
+        const seenBefore = results.some(r => r.index === idxNow);
+        if (!seenBefore) {
+          results.push({
+            index: idxNow,
+            term: c.term || '',
+            definition: c.definition || '',
+            userAnswer: rawInput,
+            correctFirstTry: false // Mark as not correct first try
+          });
+        }
       } else {
         testFeedback.textContent = 'Đúng!';
         testFeedback.classList.remove('error');
         testFeedback.classList.add('success');
         // Only count first attempt correctness once per card (relevant for practice)
         const seenBefore = results.some(r => r.index === idxNow);
-        if (!seenBefore) testCorrect += 1;
-        results.push({
-          index: idxNow,
-          term: c.term || '',
-          definition: c.definition || '',
-          userAnswer: rawInput,
-          correctFirstTry: true
-        });
+        if (!seenBefore) {
+          testCorrect += 1;
+          results.push({
+            index: idxNow,
+            term: c.term || '',
+            definition: c.definition || '',
+            userAnswer: rawInput,
+            correctFirstTry: true // Only true if correct on first attempt
+          });
+        }
       }
       
       // Speak only the correct answer
@@ -1238,7 +1252,17 @@ start();
     // Group attempts by index to list multi-attempt answers
     const groups = new Map();
     for (const r of results) {
-      if (!groups.has(r.index)) groups.set(r.index, { term: r.term, definition: r.definition, attempts: [], correctFirstTry: r.correctFirstTry });
+      if (!groups.has(r.index)) {
+        // Get the card to include its points if available
+        const card = cards && cards[r.index];
+        groups.set(r.index, { 
+          term: r.term, 
+          definition: r.definition, 
+          attempts: [], 
+          correctFirstTry: r.correctFirstTry,
+          points: card ? (card.points || 0) : 0 // Include points from the card
+        });
+      }
       const g = groups.get(r.index);
       g.attempts.push(r.userAnswer || '(bỏ qua)');
       // keep correctFirstTry as first record's value
@@ -1318,11 +1342,16 @@ start();
       const starBtn = '<button class="star-item-btn" style="margin-left: 8px;" data-index="' + idx + '">' + 
                      (cards[idx]?.starred ? '★ Bỏ đánh dấu sao' : '☆ Đánh dấu sao') + '</button>';
       
+      // Get points for this card
+      const cardPoints = g.points || 0;
+      const pointsDisplay = cardPoints > 0 ? `<span class="points-badge" style="margin-left: 8px; background: #4CAF50; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.9em;">Điểm: ${cardPoints}</span>` : '';
+      
       return (
         '<div class="summary-item ' + cls + '" data-card-index="' + idx + '">' +
           '<div class="summary-row">' +
             '<span class="badge ' + cls + '">' + status + '</span>' +
             '<span class="summary-idx">#' + (i + 1) + '</span>' +
+            pointsDisplay +
             toggleBtn +
             starBtn +
           '</div>' +
@@ -1419,7 +1448,10 @@ start();
     const list = Array.isArray(arr) ? arr : [];
     const normalized = list.map((c) => ({
       term: (c && (c.term || c.front || c.word)) || '',
-      definition: (c && (c.definition || c.back)) || ''
+      definition: (c && (c.definition || c.back)) || '',
+      points: (c && (c.points || 0)) || 0, // Load points if available, default to 0
+      starred: !!(c && c.starred), // Load starred status if available
+      timestamp: (c && c.timestamp) || new Date().toISOString() // Preserve timestamp if available
     })).filter((c) => c.term || c.definition);
     return { normalized, title: (obj && obj.title) || '' };
   }
@@ -2575,6 +2607,54 @@ start();
     setMode('test');
     startTest();
   });
+  // Function to update points for correct answers
+  function updatePoints() {
+    if (!cards || !results) return;
+    
+    // Only consider answers that were correct on the first try
+    // This ensures we don't award points for answers that were corrected after a wrong attempt
+    const firstTryCorrectIndices = new Set();
+    results.forEach(result => {
+      // Only add to the set if it was correct on the first attempt
+      // This means the user got it right without any wrong attempts first
+      if (result.correctFirstTry === true) {
+        firstTryCorrectIndices.add(result.index);
+      }
+    });
+    
+    // Update points only for cards that were correct on the first try
+    let updatedCount = 0;
+    firstTryCorrectIndices.forEach(index => {
+      if (index >= 0 && index < cards.length) {
+        // Only increment points for cards that were correct on the first try
+        cards[index].points = (cards[index].points || 0) + 1;
+        updatedCount++;
+      }
+    });
+    
+    // Show status message
+    if (status) {
+      if (updatedCount > 0) {
+        status.textContent = `Đã cập nhật điểm cho ${updatedCount} thẻ trả lời đúng ngay lần đầu.`;
+        status.classList.remove('error');
+        status.classList.add('success');
+      } else {
+        status.textContent = 'Không có thẻ nào được cập nhật điểm vì không có câu trả lời đúng ngay lần đầu.';
+        status.classList.remove('success');
+        status.classList.add('error');
+      }
+    }
+    
+    // Re-render the summary to show updated points
+    renderSummary();
+  }
+  
+  // Add event listener for the update points button
+  const btnUpdatePoints = document.getElementById('btnUpdatePoints');
+  if (btnUpdatePoints) {
+    btnUpdatePoints.addEventListener('click', updatePoints);
+  }
+  
   if (btnSaveCorrect) btnSaveCorrect.addEventListener('click', () => saveSubsetAsJson('correct'));
   if (btnSaveWrong) btnSaveWrong.addEventListener('click', () => saveSubsetAsJson('wrong'));
   if (btnExport) btnExport.addEventListener('click', exportToQuizletString);
