@@ -87,6 +87,20 @@ input[type="file"] { padding: 6px; }
 
 .form-group {
   margin-bottom: 16px;
+  width: 100%;
+}
+
+/* Make Notion database name input full width */
+#notionDbName {
+  width: 100%;
+  padding: 10px 12px;
+  margin: 4px 0 0;
+  box-sizing: border-box;
+}
+
+/* Ensure form group takes full width */
+#notionModal .form-group {
+  width: 100%;
 }
 
 .form-group label {
