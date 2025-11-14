@@ -212,7 +212,8 @@ export default async function handler(req, res) {
               'Name': { title: {} },
               'Term': { rich_text: {} },
               'Definition': { rich_text: {} },
-              'Starred': { checkbox: {} }
+              'Starred': { checkbox: {} },
+              'Points': { number: {} }
             }
           })
         });
