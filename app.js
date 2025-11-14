@@ -2140,6 +2140,7 @@ start();
         return {
           term: props.Term?.rich_text?.[0]?.plain_text || '',
           definition: props.Definition?.rich_text?.[0]?.plain_text || '',
+          points: props.Points?.number || 0,
           starred: props.Starred?.checkbox || false,
           timestamp: new Date().toISOString()
         };
@@ -2343,6 +2344,9 @@ start();
                   },
                   'Starred': {
                     'checkbox': !!card.starred
+                  },
+                  'Points': {
+                    'number': card.points || 0
                   }
                 }
               })
