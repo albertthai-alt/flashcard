@@ -349,9 +349,54 @@ input[type="file"] { padding: 6px; }
   box-shadow: 0 0 0 4px rgba(78,84,200,0.12);
 }
 
+.test-input-container {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  margin: 16px 0;
+}
+
+.test-answer-input {
+  flex: 1;
+  min-width: 0; /* Prevents input from overflowing container */
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid #d7d7e7;
+  border-radius: 8px;
+  font-size: 15px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.test-answer-input:focus {
+  border-color: #4e54c8;
+  box-shadow: 0 0 0 3px rgba(78, 84, 200, 0.15);
+  outline: none;
+}
+
+.test-controls {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.test-controls .primary-btn,
+.test-controls .secondary-btn {
+  padding: 10px 16px;
+  white-space: nowrap;
+  margin: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .test-controls { margin-top: 12px; display: flex; gap: 10px; }
 
-#testFeedback { margin-top: 10px; font-weight: 600; }
+#testFeedback {
+  margin-top: 8px;
+  margin-bottom: 8px;
+  font-weight: 600; 
+}
 #testFeedback.success { color: #0a7f2d; }
 #testFeedback.error { color: #b00020; }
 
