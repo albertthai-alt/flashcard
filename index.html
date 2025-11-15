@@ -15,7 +15,7 @@
         <div class="brand-title">Flashcards</div>
       </div>
       <div class="brand-right">
-        <div class="brand-version">v1.4</div>
+        <div class="brand-version">v1.5</div>
       </div>
     </header>
     <section class="input-section" style="padding: 10px 15px 15px;">
@@ -55,10 +55,11 @@
         <div class="count"><span id="count">0</span> thẻ</div>
       </div>
       <div class="mode-switch" id="modeSwitch" hidden>
-        <label class="read-checkbox">
-          <input type="checkbox" id="chkStarred" />
-          <span>Thẻ sao</span>
-        </label>
+        <select id="cardFilter" class="filter-dropdown">
+          <option value="all">Tất cả</option>
+          <option value="starred">Thẻ sao</option>
+          <option value="top10">Top 10</option>
+        </select>
         <label class="read-checkbox">
           <input type="checkbox" id="chkRead" checked />
           <span>Đọc</span>

@@ -884,24 +884,71 @@ start();
     return { title: '', cards: [] };
   }
 
+  // Store the current filtered cards to maintain consistency during study session
+  let currentFilteredCards = [];
+  let currentFilter = 'all';
+
   // Function to get current cards based on filters
   function getCurrentCards() {
-    // Always return a fresh copy of cards to avoid reference issues
-    let currentCards = JSON.parse(JSON.stringify(cards));
+    const filterValue = document.getElementById('cardFilter')?.value || 'all';
     
-    // Apply star filter if needed
-    if (chkStarred && chkStarred.checked) {
-      currentCards = currentCards.filter(card => card.starred);
+    // If filter hasn't changed and we already have filtered cards, return them
+    if (filterValue === currentFilter && currentFilteredCards.length > 0) {
+      return currentFilteredCards;
     }
     
-    return currentCards;
+    // Update the current filter
+    currentFilter = filterValue;
+    
+    // Get a filtered copy of the cards based on the selected filter
+    let filteredCards = [...cards];
+    
+    if (filterValue === 'starred') {
+      filteredCards = filteredCards.filter(card => card.starred);
+    } else if (filterValue === 'top10') {
+      // Calculate how many cards to show (10 or 50% of total, whichever is smaller)
+      const targetCount = cards.length >= 20 ? 10 : Math.ceil(cards.length * 0.5);
+      
+      // Create a copy of cards to avoid mutating the original array
+      const cardsToSort = [...cards];
+      
+      // Sort cards by points (ascending), then by starred status (starred first), then random
+      cardsToSort.sort((a, b) => {
+        // First sort by points (ascending)
+        const pointDiff = (a.points || 0) - (b.points || 0);
+        if (pointDiff !== 0) return pointDiff;
+        
+        // If points are equal, starred cards come first
+        if (a.starred && !b.starred) return -1;
+        if (!a.starred && b.starred) return 1;
+        
+        // If both have same points and star status, randomize
+        return Math.random() - 0.5;
+      });
+      
+      // Take the first targetCount cards
+      filteredCards = cardsToSort.slice(0, targetCount);
+    }
+    
+    // Store the filtered cards for this session
+    currentFilteredCards = filteredCards;
+    
+    return filteredCards;
   }
 
   // Update card count display
   function updateCardCount() {
     if (!countEl) return;
-    const currentCards = getCurrentCards();
-    countEl.textContent = currentCards.length;
+    
+    const totalCards = cards.length;
+    const filteredCards = getCurrentCards();
+    const filteredCount = filteredCards.length;
+    
+    if (filteredCount === totalCards) {
+      countEl.textContent = `${totalCards} thẻ`;
+    } else {
+      countEl.textContent = `${filteredCount}/${totalCards} thẻ`;
+    }
   }
 
   function renderStudy() {
@@ -989,25 +1036,31 @@ start();
       testArea.hidden = true;
       return;
     }
-    // Create an array of original indices for the current filtered cards
-    const originalIndices = [];
-    if (chkStarred && chkStarred.checked) {
-      // If filtering by starred, get the original indices of starred cards
-      cards.forEach((card, index) => {
-        if (card.starred) originalIndices.push(index);
-      });
-    } else {
-      // Otherwise use all indices
-      originalIndices.push(...Array(cards.length).keys());
+    
+    // Create an array of indices for the current filtered cards
+    const filteredIndices = [];
+    
+    // Get the original indices of the filtered cards
+    currentCards.forEach(card => {
+      const originalIndex = cards.indexOf(card);
+      if (originalIndex !== -1) {
+        filteredIndices.push(originalIndex);
+      }
+    });
+    
+    if (filteredIndices.length === 0) {
+      testArea.hidden = true;
+      return;
     }
     
-    testOrder = shuffle(originalIndices);
+    testOrder = shuffle([...filteredIndices]);
     testIdx = 0;
     testCorrect = 0;
     results = [];
     testArea.hidden = false;
     if (summaryView) summaryView.hidden = true;
-    // update direction button states if present
+    
+    // Update direction button states if present
     if (dirDefToTermBtn && dirTermToDefBtn) {
       if (testDirection === 'def_to_term') {
         dirDefToTermBtn.classList.add('active');
@@ -1017,7 +1070,7 @@ start();
         dirDefToTermBtn.classList.remove('active');
       }
     }
-    testTotal.textContent = String(currentCards.length);
+    testTotal.textContent = String(filteredIndices.length);
     showTestPrompt();
   }
 
@@ -1028,19 +1081,23 @@ start();
       return;
     }
     
-    // Create an array of original indices for the current filtered cards
-    const originalIndices = [];
-    if (chkStarred && chkStarred.checked) {
-      // If filtering by starred, get the original indices of starred cards
-      cards.forEach((card, index) => {
-        if (card.starred) originalIndices.push(index);
-      });
-    } else {
-      // Otherwise use all indices
-      originalIndices.push(...Array(cards.length).keys());
+    // Create an array of indices for the current filtered cards
+    const filteredIndices = [];
+    
+    // Get the original indices of the filtered cards
+    currentCards.forEach(card => {
+      const originalIndex = cards.indexOf(card);
+      if (originalIndex !== -1) {
+        filteredIndices.push(originalIndex);
+      }
+    });
+    
+    if (filteredIndices.length === 0) {
+      testArea.hidden = true;
+      return;
     }
     
-    practiceQueue = shuffle(originalIndices);
+    practiceQueue = shuffle([...filteredIndices]);
     testCorrect = 0;
     results = [];
     testArea.hidden = false;
@@ -1054,7 +1111,7 @@ start();
         dirDefToTermBtn.classList.remove('active');
       }
     }
-    testTotal.textContent = String(currentCards.length);
+    testTotal.textContent = String(filteredIndices.length);
     showTestPrompt();
   }
 
@@ -2670,6 +2727,27 @@ start();
   const btnUpdatePoints = document.getElementById('btnUpdatePoints');
   if (btnUpdatePoints) {
     btnUpdatePoints.addEventListener('click', updatePoints);
+  }
+
+  // Add event listener for the filter dropdown
+  const cardFilter = document.getElementById('cardFilter');
+  if (cardFilter) {
+    cardFilter.addEventListener('change', () => {
+      // Reset to first card when changing filters
+      idx = 0;
+      
+      // Re-render the current view
+      if (mode === 'study') {
+        renderStudy();
+      } else if (mode === 'test') {
+        startTest();
+      } else if (mode === 'practice') {
+        startPractice();
+      }
+      
+      // Update the card count display
+      updateCardCount();
+    });
   }
   
   if (btnSaveCorrect) btnSaveCorrect.addEventListener('click', () => saveSubsetAsJson('correct'));
