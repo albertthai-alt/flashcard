@@ -1344,11 +1344,11 @@ start();
     // Add star wrong answers button to the summary-actions div if it exists
     const summaryActions = document.querySelector('.summary-actions');
     if (summaryActions) {
-      // Remove existing star button if it exists
-      const existingBtn = document.getElementById('starWrongBtn');
-      if (existingBtn) {
-        existingBtn.remove();
-      }
+      // Remove existing buttons if they exist
+      const existingStarBtn = document.getElementById('starWrongBtn');
+      const existingUnstarBtn = document.getElementById('unstarCorrectBtn');
+      if (existingStarBtn) existingStarBtn.remove();
+      if (existingUnstarBtn) existingUnstarBtn.remove();
       
       // Create and append the star wrong answers button
       const starWrongBtn = document.createElement('button');
@@ -1385,6 +1385,12 @@ start();
         }
       });
       
+      // Add the buttons to the summary actions
+      summaryActions.appendChild(starWrongBtn);
+      
+      // Add space between buttons
+      summaryActions.appendChild(document.createTextNode(' '));
+      
       // Create and append the unstar correct answers button
       const unstarCorrectBtn = document.createElement('button');
       unstarCorrectBtn.id = 'unstarCorrectBtn';
@@ -1418,9 +1424,6 @@ start();
         }
       });
       
-      // Add the buttons to the summary actions
-      summaryActions.appendChild(starWrongBtn);
-      summaryActions.appendChild(document.createElement('br'));
       summaryActions.appendChild(unstarCorrectBtn);
     }
     const items = Array.from(groups.entries()).map(function(entry, i) {
