@@ -1370,27 +1370,58 @@ start();
           }
         });
         
-        // Show feedback
-        const feedback = document.createElement('div');
-        feedback.textContent = `Đã đánh dấu sao ${incorrectIndices.length} câu sai.`;
-        feedback.style.marginTop = '10px';
-        feedback.style.color = '#0a7f2d';
-        feedback.style.width = '100%';
-        feedback.style.textAlign = 'center';
-        
-        // Insert feedback after the button
-        summaryActions.parentNode.insertBefore(feedback, summaryActions.nextSibling);
-        
-        // Remove feedback after 3 seconds
-        setTimeout(() => {
-          if (feedback.parentNode) {
-            feedback.parentNode.removeChild(feedback);
-          }
-        }, 3000);
+        // Show feedback in status div
+        const status = document.getElementById('status');
+        if (status) {
+          status.textContent = `Đã đánh dấu sao ${incorrectIndices.length} câu sai.`;
+          //status.classList.remove('error');
+          //status.classList.add('success');
+          
+          // Clear status after 3 seconds
+          setTimeout(() => {
+            status.textContent = '';
+            status.className = '';
+          }, 3000);
+        }
       });
       
-      // Add the button to the summary actions
+      // Create and append the unstar correct answers button
+      const unstarCorrectBtn = document.createElement('button');
+      unstarCorrectBtn.id = 'unstarCorrectBtn';
+      unstarCorrectBtn.className = 'secondary-btn';
+      unstarCorrectBtn.textContent = 'Bỏ đánh dấu sao các câu đúng';
+      
+      // Add click handler for the unstar correct answers button
+      unstarCorrectBtn.addEventListener('click', () => {
+        // Get all correct answers
+        const correctIndices = Array.from(groups.entries())
+          .filter(([idx, g]) => g.correctFirstTry)
+          .map(([idx]) => idx);
+        
+        // Unstar them
+        correctIndices.forEach(idx => {
+          if (cards[idx]) {
+            cards[idx].starred = false;
+          }
+        });
+        
+        // Show feedback in status div
+        const status = document.getElementById('status');
+        if (status) {
+          status.textContent = `Đã bỏ đánh dấu sao ${correctIndices.length} câu đúng.`;
+          
+          // Clear status after 3 seconds
+          setTimeout(() => {
+            status.textContent = '';
+            status.className = '';
+          }, 3000);
+        }
+      });
+      
+      // Add the buttons to the summary actions
       summaryActions.appendChild(starWrongBtn);
+      summaryActions.appendChild(document.createElement('br'));
+      summaryActions.appendChild(unstarCorrectBtn);
     }
     const items = Array.from(groups.entries()).map(function(entry, i) {
       const idx = entry[0];
