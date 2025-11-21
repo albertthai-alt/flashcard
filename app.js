@@ -650,15 +650,44 @@ start();
         timestamp: c.timestamp || new Date().toISOString()
       })).filter((c) => c.term || c.definition);
       if (!normalized.length) throw new Error('File JSON không hợp lệ hoặc không có thẻ.');
-      cards = normalized;
+      
+      // Clear existing cards and set new ones
+      cards.length = 0;
+      Array.prototype.push.apply(cards, normalized);
+      // Reset filtered cards to force refresh
+      currentFilteredCards = [];
+      
+      // Update UI
       setTitle.textContent = (obj && obj.title) || file.name.replace(/\.json$/i, '');
       countEl.textContent = String(cards.length);
       meta.hidden = false;
       if (modeSwitch) modeSwitch.hidden = false;
 
+      // Reset and start a new session
       idx = 0;
-      renderStudy();
-      startTest();
+      knownCards.clear();
+      testOrder = [];
+      testIdx = 0;
+      
+      // Force a complete re-render based on current mode
+      if (mode === 'test') {
+        startTest();
+      } else if (mode === 'practice') {
+        // Reset practice queue and start fresh with new cards
+        practiceQueue = [];
+        startPractice();
+      } else {
+        // Clear any existing card display for study mode
+        cardFront.textContent = '';
+        cardBack.textContent = '';
+        cardFront.hidden = true;
+        cardBack.hidden = true;
+        
+        // Force re-render of the first card
+        setTimeout(() => {
+          renderStudy();
+        }, 0);
+      }
 
       status.textContent = 'Đã mở thẻ từ file JSON.';
       status.classList.remove('error');
@@ -992,8 +1021,8 @@ start();
     }
     card.classList.remove('flipped');
     progressIndex.textContent = String(idx + 1);
-    // Show filtered card count in study mode
-    progressTotal.textContent = String(filteredCards.length);
+    // Show total card count in the progress indicator
+    progressTotal.textContent = String(cards.length);
     
     // Update buttons with the correct card index from the original cards array
     updateStarButton(currentCardIndex);
@@ -1140,6 +1169,8 @@ start();
       testIndex.textContent = String(total - remaining + 1);
     } else {
       testIndex.textContent = String(testIdx + 1);
+      // Update the test total to show the actual number of cards in the test
+      testTotal.textContent = String(testOrder.length || cards.length);
     }
     testAnswer.focus();
     currentWasWrong = false;
@@ -1908,12 +1939,28 @@ start();
         extracted = res.cards;
       }
       if (!extracted.length) throw new Error('Không trích xuất được thẻ từ file.');
+      
       const shouldAppend = !!(cards && cards.length && chkAppend && chkAppend.checked);
+      
       if (shouldAppend) {
-        cards = (cards || []).concat(extracted);
+        // Append mode: add new cards to existing ones
+        const startIdx = cards.length;
+        cards = cards.concat(extracted);
+        // Reset filtered cards to force refresh
+        currentFilteredCards = [];
         countEl.textContent = String(cards.length);
         meta.hidden = false;
-        renderStudy();
+        
+        // Update the current view based on the active mode
+        if (mode === 'test') {
+          // If in test mode, update the test order with new cards
+          const newIndices = Array.from({length: extracted.length}, (_, i) => startIdx + i);
+          testOrder = [...testOrder, ...newIndices];
+          renderTest();
+        } else {
+          renderStudy();
+        }
+        
         // Stop any ongoing speech when new cards are loaded
         if (window.speechSynthesis) {
           window.speechSynthesis.cancel();
@@ -1922,14 +1969,37 @@ start();
         status.classList.remove('error');
         status.classList.add('success');
       } else {
-        cards = extracted;
+        // Replace mode: clear existing cards and set new ones
+        cards.length = 0;
+        Array.prototype.push.apply(cards, extracted);
+        // Reset filtered cards to force refresh
+        currentFilteredCards = [];
+        
         setTitle.textContent = title || file.name;
         countEl.textContent = String(cards.length);
         meta.hidden = false;
 
+        // Reset and start a new session
         idx = 0;
-        renderStudy();
-        startTest();
+        knownCards.clear();
+        testOrder = [];
+        testIdx = 0;
+        
+        // Force a complete re-render
+        if (mode === 'test') {
+          startTest();
+        } else {
+          // Clear any existing card display
+          if (cardFront) cardFront.textContent = '';
+          if (cardBack) cardBack.textContent = '';
+          if (cardFront) cardFront.hidden = true;
+          if (cardBack) cardBack.hidden = true;
+          
+          // Force re-render of the first card
+          setTimeout(() => {
+            renderStudy();
+          }, 0);
+        }
         // Stop any ongoing speech when new cards are loaded
         if (window.speechSynthesis) {
           window.speechSynthesis.cancel();
@@ -2258,14 +2328,37 @@ start();
       const shouldAppend = cards && cards.length && chkAppend && chkAppend.checked;
       
       if (shouldAppend) {
+        const startIdx = cards.length;
         cards = (cards || []).concat(newCards);
+        
+        // Update test order if in test mode
+        if (mode === 'test') {
+          const newIndices = Array.from({length: newCards.length}, (_, i) => startIdx + i);
+          testOrder = [...testOrder, ...newIndices];
+          renderTest();
+        } else {
+          renderStudy();
+        }
+        
         showNotionStatus(`Đã thêm ${newCards.length} thẻ từ Notion database "${databaseName}"`, 'success');
       } else {
         cards = newCards;
         setTitle.textContent = databaseName || 'Notion Database';
+        
+        // Reset and start a new session
+        idx = 0;
+        knownCards.clear();
+        testOrder = [];
+        testIdx = 0;
+        
+        // Update the current view based on the active mode
+        if (mode === 'test') {
+          startTest();
+        } else {
+          setMode('study');
+        }
+        
         showNotionStatus(`Đã tải ${newCards.length} thẻ từ Notion`, 'success');
-        // Switch to study view
-        setMode('study');
       }
 
       // Update UI
