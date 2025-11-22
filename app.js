@@ -2856,6 +2856,74 @@ start();
     btnUpdatePoints.addEventListener('click', updatePoints);
   }
 
+  // Fullscreen functionality
+  const toggleFullscreenStudy = document.getElementById('toggleFullscreenStudy');
+  const toggleFullscreenTest = document.getElementById('toggleFullscreenTest');
+  let isFullscreen = false;
+
+  async function toggleFullscreen(element) {
+    try {
+      if (!document.fullscreenElement) {
+        // Enter fullscreen
+        await element.requestFullscreen();
+        element.classList.add('fullscreen');
+        isFullscreen = true;
+        
+        // Update button icon
+        const svg = element.id === 'cardArea' ? 
+          toggleFullscreenStudy?.querySelector('svg') : 
+          toggleFullscreenTest?.querySelector('svg');
+        if (svg) {
+          svg.innerHTML = '<path d="M5 16v3h3m2-16h-5a2 2 0 0 0-2 2v5m18-7h-5m5 18h-5m5-18v5m0 13v5m0-18h5a2 2 0 0 1 2 2v5m-18 0h-5a2 2 0 0 0-2 2v5m0-7v5a2 2 0 0 0 2 2h5"></path>';
+        }
+      } else {
+        // Exit fullscreen
+        await document.exitFullscreen();
+        element.classList.remove('fullscreen');
+        isFullscreen = false;
+        
+        // Update button icon
+        const svg = element.id === 'cardArea' ? 
+          toggleFullscreenStudy?.querySelector('svg') : 
+          toggleFullscreenTest?.querySelector('svg');
+        if (svg) {
+          svg.innerHTML = '<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>';
+        }
+      }
+    } catch (err) {
+      console.error('Error toggling fullscreen:', err);
+    }
+  }
+
+  // Add event listeners for fullscreen buttons
+  if (toggleFullscreenStudy) {
+    toggleFullscreenStudy.addEventListener('click', () => toggleFullscreen(cardArea));
+  }
+  
+  if (toggleFullscreenTest) {
+    toggleFullscreenTest.addEventListener('click', () => toggleFullscreen(testArea));
+  }
+
+  // Handle fullscreen change events
+  document.addEventListener('fullscreenchange', () => {
+    if (!document.fullscreenElement) {
+      // Exited fullscreen
+      document.querySelectorAll('.fullscreen').forEach(el => el.classList.remove('fullscreen'));
+      isFullscreen = false;
+      
+      // Reset button icons
+      const fullscreenSvgs = [
+        toggleFullscreenStudy?.querySelector('svg'),
+        toggleFullscreenTest?.querySelector('svg')
+      ];
+      fullscreenSvgs.forEach(svg => {
+        if (svg) {
+          svg.innerHTML = '<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>';
+        }
+      });
+    }
+  });
+
   // Add event listener for the filter dropdown
   const cardFilter = document.getElementById('cardFilter');
   if (cardFilter) {

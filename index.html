@@ -15,7 +15,7 @@
         <div class="brand-title">Flashcards</div>
       </div>
       <div class="brand-right">
-        <div class="brand-version">v1.6.1</div>
+        <div class="brand-version">v1.7</div>
       </div>
     </header>
     <section class="input-section" style="padding: 10px 15px 15px;">
@@ -75,10 +75,17 @@
 
     <main id="studyView" class="view">
       <div class="card-area" id="cardArea" hidden>
-        <div class="direction-switch" style="display:flex;gap:8px;margin-bottom:10px;">
-          <div style="margin-bottom: 5px;">Chế độ:</div>
-          <button id="studyDirDefToTerm" type="button" class="secondary-btn">Định nghĩa → Thuật ngữ</button>
-          <button id="studyDirTermToDef" type="button" class="secondary-btn active">Thuật ngữ → Định nghĩa</button>
+        <div class="view-controls" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+          <div class="direction-switch" style="display:flex;gap:8px;flex:1;">
+            <div style="margin-bottom: 5px;">Chế độ:</div>
+            <button id="studyDirDefToTerm" type="button" class="secondary-btn">Định nghĩa → Thuật ngữ</button>
+            <button id="studyDirTermToDef" type="button" class="secondary-btn active">Thuật ngữ → Định nghĩa</button>
+          </div>
+          <button id="toggleFullscreenStudy" type="button" class="secondary-btn" title="Phóng to">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+            </svg>
+          </button>
         </div>
         <div class="card" id="card">
           <div class="card-inner" id="cardInner">
@@ -96,10 +103,17 @@
 
     <main id="testView" class="view" hidden>
       <div class="test-area" id="testArea" hidden>
-        <div class="direction-switch" style="display:flex;gap:8px;margin-bottom:10px;">
-          <div style="margin-bottom: 5px;">Chế độ:</div>
-          <button id="dirDefToTerm" type="button" class="secondary-btn">Định nghĩa → Thuật ngữ</button>
-          <button id="dirTermToDef" type="button" class="secondary-btn">Thuật ngữ → Định nghĩa</button>
+        <div class="view-controls" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+          <div class="direction-switch" style="display:flex;gap:8px;flex:1;">
+            <div style="margin-bottom: 5px;">Chế độ:</div>
+            <button id="dirDefToTerm" type="button" class="secondary-btn">Định nghĩa → Thuật ngữ</button>
+            <button id="dirTermToDef" type="button" class="secondary-btn">Thuật ngữ → Định nghĩa</button>
+          </div>
+          <button id="toggleFullscreenTest" type="button" class="secondary-btn" title="Phóng to">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+            </svg>
+          </button>
         </div>
         <div class="prompt" id="testPrompt"></div>
         <div class="test-input-container">
