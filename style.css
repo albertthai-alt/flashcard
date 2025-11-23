@@ -582,6 +582,34 @@ input[type="file"] { padding: 6px; }
   margin-top: 15px !important;
 }
 
+/* Fullscreen container */
+.study-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  transition: all 0.3s ease;
+}
+
+/* Fullscreen mode */
+:fullscreen .study-container,
+:fullscreen .card-area {
+  background: white;
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+:fullscreen .card-area {
+  flex: 1;
+  display: flex !important;
+  flex-direction: column;
+  justify-content: center;
+}
+
 /* Fullscreen toggle button */
 #toggleFullscreenStudy,
 #toggleFullscreenTest {
@@ -592,16 +620,17 @@ input[type="file"] { padding: 6px; }
   height: 36px !important;
   padding: 0 !important;
   border-radius: 50% !important;
-  margin: 0 !important;
-  background: rgba(255, 255, 255, 0.9) !important;
+  background: white !important;
   border: 1px solid #e0e0e0 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
   transition: all 0.2s ease !important;
+  position: relative;
+  z-index: 2;
 }
 
 #toggleFullscreenStudy:hover,
 #toggleFullscreenTest:hover {
   background: #f0f0f0 !important;
-  transform: scale(1.05) !important;
 }
 
 #toggleFullscreenStudy svg,
@@ -611,26 +640,44 @@ input[type="file"] { padding: 6px; }
   transition: transform 0.2s ease !important;
 }
 
-.fullscreen #toggleFullscreenStudy,
-.fullscreen #toggleFullscreenTest {
+:fullscreen #toggleFullscreenStudy,
+:fullscreen #toggleFullscreenTest {
   position: fixed !important;
   top: 20px !important;
   right: 20px !important;
   z-index: 1000 !important;
-  background: rgba(255, 255, 255, 0.9) !important;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1) !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  backdrop-filter: blur(5px);
 }
 
-.fullscreen #toggleFullscreenStudy svg,
-.fullscreen #toggleFullscreenTest svg {
+:fullscreen #toggleFullscreenStudy svg,
+:fullscreen #toggleFullscreenTest svg {
   transform: rotate(45deg) !important;
 }
 
-/* Hide other elements in fullscreen */
-:fullscreen .view-controls {
-  display: none !important;
+/* Adjust card size in fullscreen */
+:fullscreen .card {
+  max-width: 800px;
+  margin: 0 auto;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
+/* Ensure controls are visible in fullscreen */
+:fullscreen .view-controls {
+  position: relative;
+  z-index: 1;
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+/* Hide other elements in fullscreen */
 :fullscreen .header,
 :fullscreen .input-section,
 :fullscreen .meta,
