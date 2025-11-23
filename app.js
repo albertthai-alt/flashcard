@@ -2020,6 +2020,70 @@ start();
     }
   }
 
+  // Handle paste from clipboard
+  const btnPaste = document.getElementById('btnPaste');
+  if (btnPaste) {
+    btnPaste.addEventListener('click', async () => {
+      try {
+        // Request clipboard read permission
+        const permission = await navigator.permissions.query({ name: 'clipboard-read' });
+        if (permission.state === 'denied') {
+          status.textContent = 'Vui lòng cấp quyền truy cập clipboard để tiếp tục';
+          return;
+        }
+
+        // Read text from clipboard
+        const text = await navigator.clipboard.readText();
+        if (!text) {
+          status.textContent = 'Không tìm thấy nội dung trong clipboard';
+          return;
+        }
+
+        // Show loading status
+        status.textContent = 'Đang xử lý nội dung từ clipboard...';
+        
+        // Parse the HTML content
+        const result = parseHtmlAndExtract(text);
+        
+        // Handle the parsed result
+        if (result && result.cards && result.cards.length > 0) {
+          const append = chkAppend && chkAppend.checked;
+          if (append) {
+            // Add to existing cards
+            const existingCount = cards.length;
+            cards = [...cards, ...result.cards];
+            status.textContent = `Đã thêm ${result.cards.length} thẻ (tổng: ${cards.length})`;
+          } else {
+            // Replace existing cards
+            cards = result.cards;
+            status.textContent = `Đã tải ${cards.length} thẻ từ clipboard`;
+          }
+          
+          // Update UI
+          if (result.title) {
+            setTitle.textContent = result.title;
+          }
+          updateCardCount();
+          renderStudy();
+          meta.hidden = false;
+          cardArea.hidden = false;
+          setMode('study');
+          
+          // Save to localStorage
+          localStorage.setItem('lastCards', JSON.stringify(cards));
+          if (result.title) {
+            localStorage.setItem('lastTitle', result.title);
+          }
+        } else {
+          status.textContent = 'Không tìm thấy thẻ nào trong nội dung đã dán';
+        }
+      } catch (error) {
+        console.error('Error pasting from clipboard:', error);
+        status.textContent = `Lỗi khi đọc từ clipboard: ${error.message || 'Không thể truy cập clipboard'}`;
+      }
+    });
+  }
+
   function setFaviconFromDoc(doc) {
     if (!doc) return;
     const link = doc.querySelector('link[rel="shortcut icon"], link[rel="icon"]');
@@ -2090,54 +2154,33 @@ start();
           startPractice();
         }
       }
-      
-      // Update the card count
-      updateCardCount();
-    });
-  }
+    });  // Close the change event listener
+  }  // Close the if(chkStarred) block
 
-  // Events
-  btnLoad.addEventListener('click', loadFromFile);
-  if (btnSave) btnSave.addEventListener('click', saveCardsToJson);
-  if (btnOpen) btnOpen.addEventListener('click', () => jsonFile && jsonFile.click());
-  fileInput.addEventListener('change', () => {
-    status.textContent = '';
-  });
-  if (jsonFile) jsonFile.addEventListener('change', async () => {
-    const f = jsonFile.files && jsonFile.files[0];
-    if (f) {
-      // Respect append checkbox when opening JSON
-      const shouldAppend = !!(cards && cards.length && chkAppend && chkAppend.checked);
-      if (shouldAppend) {
-        await openAdditionalCardsFromJson(f);
-      } else {
-        await openCardsFromJson(f);
+  // GitHub list click handler
+  if (ghList) {
+    ghList.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const t = e.target;
+      if (!t || !t.closest) return;
+      
+      // Handle folder navigation
+      const folderLink = t.closest('a.gh-folder');
+      if (folderLink) {
+        const path = folderLink.getAttribute('data-path') || '';
+        await loadGithubBrowser(path);
+        return;
       }
-      // reset input so picking the same file again still triggers change
-      jsonFile.value = '';
-    }
-  });
-  if (ghList) ghList.addEventListener('click', async (e) => {
-    e.preventDefault();
-    const t = e.target;
-    if (!t || !t.closest) return;
-    
-    // Handle folder navigation
-    const folderLink = t.closest('a.gh-folder');
-    if (folderLink) {
-      const path = folderLink.getAttribute('data-path') || '';
-      await loadGithubBrowser(path);
-      return;
-    }
-    
-    // Handle JSON file click
-    const jsonLink = t.closest('a.gh-json');
-    if (jsonLink) {
-      const url = jsonLink.getAttribute('data-url');
-      const name = jsonLink.getAttribute('data-name');
-      if (url) openCardsFromGithub(url, name);
-    }
-  });
+      
+      // Handle JSON file click
+      const jsonLink = t.closest('a.gh-json');
+      if (jsonLink) {
+        const url = jsonLink.getAttribute('data-url');
+        const name = jsonLink.getAttribute('data-name');
+        if (url) openCardsFromGithub(url, name);
+      }
+    });  // Close the click event listener
+  }  // Close the if(ghList) block
 
   modeStudyBtn.addEventListener('click', () => setMode('study'));
   modeTestBtn.addEventListener('click', () => {
