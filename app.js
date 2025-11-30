@@ -974,9 +974,9 @@ start();
     const filteredCount = filteredCards.length;
     
     if (filteredCount === totalCards) {
-      countEl.textContent = `${totalCards} thẻ`;
+      countEl.textContent = String(totalCards);
     } else {
-      countEl.textContent = `${filteredCount}/${totalCards} thẻ`;
+      countEl.textContent = `${filteredCount}/${totalCards}`;
     }
   }
 
@@ -2209,10 +2209,27 @@ start();
         document.title = `Flashcards - ${extracted.title}`;
       }
       
+      // Reset all mode-specific state variables
+      testOrder = [];
+      practiceQueue = [];
+      testIdx = 0;
+      knownCards.clear();
+      idx = 0;
+      currentFilteredCards = []; // Reset cached filtered cards
+      currentFilter = 'all'; // Reset filter to default
+      
       updateCardCount();
-      renderStudy();
       meta.hidden = false;
-      setMode('study');
+      
+      // Initialize based on current mode instead of always forcing study mode
+      if (mode === 'test') {
+        startTest();
+      } else if (mode === 'practice') {
+        startPractice();
+      } else {
+        renderStudy();
+        setMode('study');
+      }
       // Don't auto-save to JSON to respect user's choice
     }
   }
