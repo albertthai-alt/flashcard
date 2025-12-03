@@ -2274,7 +2274,10 @@ start();
     }
   });
 
-  modeStudyBtn.addEventListener('click', () => setMode('study'));
+  modeStudyBtn.addEventListener('click', () => {
+    setMode('study');
+    renderStudy();
+  });
   modeTestBtn.addEventListener('click', () => {
     setMode('test');
     startTest();
