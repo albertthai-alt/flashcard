@@ -219,7 +219,14 @@
   // Notes functions
   function getCurrentCardIndex() {
     if (mode === 'study') {
-      return idx;
+      const currentCards = getCurrentCards();
+      if (idx >= 0 && idx < currentCards.length) {
+        const currentCard = currentCards[idx];
+        // Find the index of this card in the original cards array
+        return cards.findIndex(c => 
+          c.term === currentCard.term && c.definition === currentCard.definition
+        );
+      }
     } else if (mode === 'test') {
       return testOrder.length > 0 ? testOrder[testIdx] : -1;
     } else if (mode === 'practice') {
