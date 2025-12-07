@@ -213,7 +213,8 @@ export default async function handler(req, res) {
               'Term': { rich_text: {} },
               'Definition': { rich_text: {} },
               'Starred': { checkbox: {} },
-              'Points': { number: {} }
+              'Points': { number: {} },
+              'Notes': { rich_text: {} }
             }
           })
         });
