@@ -63,6 +63,15 @@
   const exportListBox = document.getElementById('exportListBox');
   const btnExportStandalone = document.getElementById('btnExportStandalone');
 
+  // Notes elements
+  const notesBtnStudy = document.getElementById('notesBtnStudy');
+  const notesBtnTest = document.getElementById('notesBtnTest');
+  const notesModal = document.getElementById('notesModal');
+  const notesTextarea = document.getElementById('notesTextarea');
+  const closeNotesModal = document.getElementById('closeNotesModal');
+  const btnSaveNotes = document.getElementById('btnSaveNotes');
+  const btnCancelNotes = document.getElementById('btnCancelNotes');
+
   // ---------- Favicon utilities ----------
   function ensureFaviconLink() {
     let link = document.querySelector('link[rel="icon"]') || document.querySelector('link[rel="shortcut icon"]');
@@ -203,6 +212,61 @@
   let testDirection = 'def_to_term';
   // Practice mode queue (indices)
   let practiceQueue = [];
+  
+  // Notes functionality
+  let currentNotesCardIndex = -1;
+
+  // Notes functions
+  function getCurrentCardIndex() {
+    if (mode === 'study') {
+      return idx;
+    } else if (mode === 'test') {
+      return testOrder.length > 0 ? testOrder[testIdx] : -1;
+    } else if (mode === 'practice') {
+      return practiceQueue.length > 0 ? practiceQueue[0] : -1;
+    }
+    return -1;
+  }
+
+  function updateNotesButton() {
+    const cardIndex = getCurrentCardIndex();
+    if (cardIndex >= 0 && cards[cardIndex]) {
+      const hasNotes = cards[cardIndex].notes && cards[cardIndex].notes.trim() !== '';
+      
+      // Update study mode notes button
+      if (notesBtnStudy) {
+        notesBtnStudy.classList.toggle('has-notes', hasNotes);
+      }
+      
+      // Update test mode notes button  
+      if (notesBtnTest) {
+        notesBtnTest.classList.toggle('has-notes', hasNotes);
+      }
+    }
+  }
+
+  function openNotesModal() {
+    const cardIndex = getCurrentCardIndex();
+    if (cardIndex >= 0 && cards[cardIndex]) {
+      currentNotesCardIndex = cardIndex;
+      notesTextarea.value = cards[cardIndex].notes || '';
+      notesModal.style.display = 'block';
+      notesTextarea.focus();
+    }
+  }
+
+  function closeNotesModalFunc() {
+    notesModal.style.display = 'none';
+    currentNotesCardIndex = -1;
+  }
+
+  function saveNotes() {
+    if (currentNotesCardIndex >= 0 && cards[currentNotesCardIndex]) {
+      cards[currentNotesCardIndex].notes = notesTextarea.value.trim();
+      updateNotesButton();
+      closeNotesModalFunc();
+    }
+  }
 
   function setMode(newMode) {
     mode = newMode;
@@ -617,6 +681,7 @@ start();
         definition: c.definition,
         points: c.points || 0,  // Include points when saving
         starred: !!c.starred,   // Include star status when saving
+        notes: c.notes || '',   // Include notes when saving
         timestamp: c.timestamp || new Date().toISOString()
       }))
     };
@@ -647,6 +712,7 @@ start();
         definition: (c && (c.definition || c.back)) || '',
         points: (c && (c.points || 0)) || 0, // Load points if available, default to 0
         starred: !!c.starred,
+        notes: (c && c.notes) || '', // Load notes if available
         timestamp: c.timestamp || new Date().toISOString()
       })).filter((c) => c.term || c.definition);
       if (!normalized.length) throw new Error('File JSON không hợp lệ hoặc không có thẻ.');
@@ -957,6 +1023,8 @@ start();
       
       // Take the first targetCount cards
       filteredCards = cardsToSort.slice(0, targetCount);
+    } else if (filterValue === 'hasNotes') {
+      filteredCards = filteredCards.filter(card => card.notes && card.notes.trim() !== '');
     }
     
     // Store the filtered cards for this session
@@ -1027,6 +1095,7 @@ start();
     // Update buttons with the correct card index from the original cards array
     updateStarButton(currentCardIndex);
     updateKnownButton(currentCardIndex);
+    updateNotesButton();
   }
 
   function normalize(s) {
@@ -1176,6 +1245,7 @@ start();
     currentWasWrong = false;
     currentFirstWrongAnswer = '';
     currentEnqueued = false;
+    updateNotesButton();
   }
 
   function checkAnswer() {
@@ -1578,6 +1648,7 @@ start();
       definition: (c && (c.definition || c.back)) || '',
       points: (c && (c.points || 0)) || 0, // Load points if available, default to 0
       starred: !!(c && c.starred), // Load starred status if available
+      notes: (c && c.notes) || '', // Load notes if available
       timestamp: (c && c.timestamp) || new Date().toISOString() // Preserve timestamp if available
     })).filter((c) => c.term || c.definition);
     return { normalized, title: (obj && obj.title) || '' };
@@ -2287,6 +2358,20 @@ start();
     startPractice();
   });
 
+  // Notes functionality event listeners
+  if (notesBtnStudy) notesBtnStudy.addEventListener('click', openNotesModal);
+  if (notesBtnTest) notesBtnTest.addEventListener('click', openNotesModal);
+  if (closeNotesModal) closeNotesModal.addEventListener('click', closeNotesModalFunc);
+  if (btnSaveNotes) btnSaveNotes.addEventListener('click', saveNotes);
+  if (btnCancelNotes) btnCancelNotes.addEventListener('click', closeNotesModalFunc);
+
+  // Close notes modal when clicking outside
+  window.addEventListener('click', (e) => {
+    if (e.target === notesModal) {
+      closeNotesModalFunc();
+    }
+  });
+
   // Initialize speech synthesis
   const synth = window.speechSynthesis;
   let cachedVoices = [];
@@ -2454,6 +2539,7 @@ start();
           definition: props.Definition?.rich_text?.[0]?.plain_text || '',
           points: props.Points?.number || 0,
           starred: props.Starred?.checkbox || false,
+          notes: props.Notes?.rich_text?.[0]?.plain_text || '',
           timestamp: new Date().toISOString()
         };
       }).filter(card => card.term || card.definition);
@@ -2682,6 +2768,11 @@ start();
                   },
                   'Points': {
                     'number': card.points || 0
+                  },
+                  'Notes': {
+                    'rich_text': [
+                      { 'text': { 'content': card.notes || '' } }
+                    ]
                   }
                 }
               })

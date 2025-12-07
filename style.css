@@ -684,3 +684,33 @@ input[type="file"] { padding: 6px; }
 :fullscreen .footer {
   display: none !important;
 }
+
+/* Notes button styling */
+.notes-btn {
+  padding: 8px;
+  border: 1px solid #d7d7e7;
+  background: #ffffff;
+  color: #666;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notes-btn:hover {
+  background: #f8f9fa;
+  border-color: #b3b3cc;
+}
+
+.notes-btn.has-notes {
+  background: #28a745;
+  color: white;
+  border-color: #28a745;
+}
+
+.notes-btn.has-notes:hover {
+  background: #218838;
+  border-color: #218838;
+}

@@ -15,7 +15,7 @@
         <div class="brand-title">Flashcards</div>
       </div>
       <div class="brand-right">
-        <div class="brand-version">v1.8.2</div>
+        <div class="brand-version">v1.9</div>
       </div>
     </header>
     <section class="input-section" style="padding: 10px 15px 15px;">
@@ -60,6 +60,7 @@
           <option value="all">Tất cả</option>
           <option value="starred">Thẻ sao</option>
           <option value="top10">Top 10</option>
+          <option value="hasNotes">Thẻ ghi chú</option>
         </select>
         <label class="read-checkbox">
           <input type="checkbox" id="chkRead" checked />
@@ -83,11 +84,22 @@
             <button id="studyDirDefToTerm" type="button" class="secondary-btn">Định nghĩa → Thuật ngữ</button>
             <button id="studyDirTermToDef" type="button" class="secondary-btn active">Thuật ngữ → Định nghĩa</button>
           </div>
-          <button id="toggleFullscreenStudy" type="button" class="secondary-btn" title="Phóng to">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
-            </svg>
-          </button>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <button id="notesBtnStudy" type="button" class="notes-btn" title="Ghi chú">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+            </button>
+            <button id="toggleFullscreenStudy" type="button" class="secondary-btn" title="Phóng to">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+              </svg>
+            </button>
+          </div>
         </div>
         <div class="card" id="card">
           <div class="card-inner" id="cardInner">
@@ -111,11 +123,22 @@
             <button id="dirDefToTerm" type="button" class="secondary-btn">Định nghĩa → Thuật ngữ</button>
             <button id="dirTermToDef" type="button" class="secondary-btn">Thuật ngữ → Định nghĩa</button>
           </div>
-          <button id="toggleFullscreenTest" type="button" class="secondary-btn" title="Phóng to">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
-            </svg>
-          </button>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <button id="notesBtnTest" type="button" class="notes-btn" title="Ghi chú">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+            </button>
+            <button id="toggleFullscreenTest" type="button" class="secondary-btn" title="Phóng to">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+              </svg>
+            </button>
+          </div>
         </div>
         <div class="prompt" id="testPrompt"></div>
         <div class="test-input-container">
@@ -185,6 +208,22 @@
       <div class="form-actions">
         <button id="btnSaveToNotion" class="primary-btn">Lưu vào Notion</button>
         <button id="btnCancelNotion" class="secondary-btn">Hủy</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notes Modal -->
+  <div id="notesModal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <span class="close-btn" id="closeNotesModal">&times;</span>
+      <h3>Ghi chú thẻ</h3>
+      <div class="form-group">
+        <label for="notesTextarea">Ghi chú của bạn:</label>
+        <textarea id="notesTextarea" class="notes-textarea" placeholder="Nhập ghi chú cho thẻ này..." rows="6" style="width: 100%; padding: 8px; border: 1px solid #d7d7e7; border-radius: 8px; font-family: inherit; resize: vertical;"></textarea>
+      </div>
+      <div class="form-actions">
+        <button id="btnSaveNotes" class="primary-btn">Lưu ghi chú</button>
+        <button id="btnCancelNotes" class="secondary-btn">Hủy</button>
       </div>
     </div>
   </div>
