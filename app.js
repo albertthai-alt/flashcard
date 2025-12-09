@@ -1571,6 +1571,30 @@ start();
       );
     });
     summaryArea.innerHTML = items.join('');
+    
+    // Auto-exit fullscreen when test/practice ends
+    if (isFullscreen && document.fullscreenElement) {
+      document.exitFullscreen();
+      isFullscreen = false;
+      
+      // Remove fullscreen class from both study and test areas
+      const studyContainer = document.getElementById('studyContainer');
+      const testArea = document.getElementById('testArea');
+      if (studyContainer) studyContainer.classList.remove('fullscreen');
+      if (testArea) testArea.classList.remove('fullscreen');
+      
+      // Update button icons back to fullscreen enter state
+      const updateButtonIcon = (button) => {
+        if (button) {
+          const svg = button.querySelector('svg');
+          if (svg) {
+            svg.innerHTML = '<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>';
+          }
+        }
+      };
+      updateButtonIcon(toggleFullscreenStudy);
+      updateButtonIcon(toggleFullscreenTest);
+    }
   }
 
   // Toggle handler for marking items in summary
