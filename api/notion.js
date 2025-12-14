@@ -181,11 +181,14 @@ export default async function handler(req, res) {
       return errors;
     }
 
-    // Delete a database
+    // Delete a database (archive it)
     if (action === 'delete_database' && body.database_id) {
       const response = await fetch(`https://api.notion.com/v1/databases/${body.database_id}`, {
-        method: 'DELETE',
-        headers
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({
+          archived: true
+        })
       });
       
       const data = await response.json();
@@ -230,10 +233,13 @@ export default async function handler(req, res) {
             console.log('Database structure mismatch detected:', structureErrors);
             console.log('Deleting and recreating database with correct structure...');
             
-            // Delete the existing database
+            // Delete the existing database (archive it)
             const deleteResponse = await fetch(`https://api.notion.com/v1/databases/${existingDb.id}`, {
-              method: 'DELETE',
-              headers
+              method: 'PATCH',
+              headers,
+              body: JSON.stringify({
+                archived: true
+              })
             });
             
             if (!deleteResponse.ok) {
