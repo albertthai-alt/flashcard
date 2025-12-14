@@ -2740,7 +2740,13 @@ start();
         }
 
         const databaseId = dbData.id;
-        showNotionStatus(`Đang xóa dữ liệu cũ trong database: ${dbData.name}...`);
+        const wasRecreated = dbData.recreated || false;
+        
+        if (wasRecreated) {
+          showNotionStatus(`Đã xóa database cũ có cấu trúc không tương thích và tạo mới: ${dbData.name}...`, 'warning');
+        } else {
+          showNotionStatus(`Đang xóa dữ liệu cũ trong database: ${dbData.name}...`);
+        }
         
         // 2. Clear existing database
         const clearResponse = await fetch('/api/notion', {

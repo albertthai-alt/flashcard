@@ -60,6 +60,7 @@ input[type="file"] { padding: 6px; }
 .status { margin-top: 8px; font-size: 14px; color: #444; min-height: 20px; }
 .status.error { color: #b00020; }
 .status.success { color: #0a7f2d; }
+.status.warning { color: #f57c00; }
 
 /* Notion Modal Styles */
 .modal {

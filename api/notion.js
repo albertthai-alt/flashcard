@@ -154,6 +154,44 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, deleted: pages.length });
     }
 
+    // Helper function to validate database structure
+    function validateDatabaseStructure(dbProperties) {
+      const requiredProperties = {
+        'Name': 'title',
+        'Term': 'rich_text',
+        'Definition': 'rich_text',
+        'Starred': 'checkbox',
+        'Points': 'number',
+        'Notes': 'rich_text'
+      };
+
+      const errors = [];
+      
+      for (const [propertyName, expectedType] of Object.entries(requiredProperties)) {
+        if (!dbProperties[propertyName]) {
+          errors.push(`Missing property: ${propertyName}`);
+        } else {
+          const actualType = Object.keys(dbProperties[propertyName])[0];
+          if (actualType !== expectedType) {
+            errors.push(`Property ${propertyName} has type ${actualType}, expected ${expectedType}`);
+          }
+        }
+      }
+
+      return errors;
+    }
+
+    // Delete a database
+    if (action === 'delete_database' && body.database_id) {
+      const response = await fetch(`https://api.notion.com/v1/databases/${body.database_id}`, {
+        method: 'DELETE',
+        headers
+      });
+      
+      const data = await response.json();
+      return res.status(response.status).json(data);
+    }
+
     // Find or create database by name
     if (action === 'find_or_create_database') {
       const { database_name: databaseName } = req.body;
@@ -161,6 +199,8 @@ export default async function handler(req, res) {
       if (!databaseName) {
         return res.status(400).json({ ok: false, error: 'Database name is required' });
       }
+
+      let wasRecreated = false; // Track if database was recreated
 
       try {
         // First, try to find the database by name
@@ -183,12 +223,36 @@ export default async function handler(req, res) {
         );
 
         if (existingDb) {
-          return res.json({
-            ok: true,
-            id: existingDb.id,
-            name: existingDb.title[0]?.plain_text || databaseName,
-            created: false
-          });
+          // Check if the existing database has the correct structure
+          const structureErrors = validateDatabaseStructure(existingDb.properties || {});
+          
+          if (structureErrors.length > 0) {
+            console.log('Database structure mismatch detected:', structureErrors);
+            console.log('Deleting and recreating database with correct structure...');
+            
+            // Delete the existing database
+            const deleteResponse = await fetch(`https://api.notion.com/v1/databases/${existingDb.id}`, {
+              method: 'DELETE',
+              headers
+            });
+            
+            if (!deleteResponse.ok) {
+              const deleteError = await deleteResponse.json();
+              throw new Error(`Failed to delete incompatible database: ${deleteError.message || 'Unknown error'}`);
+            }
+            
+            console.log('Successfully deleted incompatible database, proceeding to create new one...');
+            wasRecreated = true;
+            // Continue to create new database below
+          } else {
+            // Database structure is correct, return existing database
+            return res.json({
+              ok: true,
+              id: existingDb.id,
+              name: existingDb.title[0]?.plain_text || databaseName,
+              created: false
+            });
+          }
         }
 
         // Get parent page ID from environment variable
@@ -233,7 +297,8 @@ export default async function handler(req, res) {
           ok: true,
           id: createData.id,
           name: databaseName,
-          created: true
+          created: true,
+          recreated: wasRecreated // Indicate if this was a recreation
         });
       } catch (error) {
         console.error('Error finding/creating Notion database:', error);
