@@ -468,7 +468,11 @@ function nf(s){
   // apply basic plural normalization rules
   t = t.replace(/\\b(\\w+)ies\\b/gi, '$1y');      // babies -> baby
   t = t.replace(/\\b(\\w+)ves\\b/gi, '$1fe');      // wolves -> wolf  
-  t = t.replace(/\\b(\\w+)(?<!s)es\\b/gi, '$1');   // boxes -> box (but not "ss" -> "s")
+  t = t.replace(/\\b(\\w+)ses\\b/gi, '$1s');       // cases -> case, houses -> house
+  t = t.replace(/\\b(\\w+)xes\\b/gi, '$1x');       // boxes -> box
+  t = t.replace(/\\b(\\w+)shes\\b/gi, '$1sh');     // dishes -> dish
+  t = t.replace(/\\b(\\w+)ches\\b/gi, '$1ch');     // watches -> watch
+  t = t.replace(/\\b(\\w+)zes\\b/gi, '$1z');       // sizes -> size
   t = t.replace(/\\b(\\w+)(?<!ss)s\\b/gi, '$1');   // boys -> boy (but not "class" -> "clas")
   // remove all non a-z0-9 and spaces, then collapse spaces
   t = t.replace(/[^a-z0-9 ]+/g, ' ').replace(/\\s+/g, ' ').trim();
@@ -1131,7 +1135,11 @@ start();
     const normalizedPlurals = noPunctuation
       .replace(/\b(\w+)ies\b/gi, '$1y')      // babies -> baby
       .replace(/\b(\w+)ves\b/gi, '$1fe')      // wolves -> wolf
-      .replace(/\b(\w+)(?<!s)es\b/gi, '$1')   // boxes -> box (but not "ss" -> "s")
+      .replace(/\b(\w+)ses\b/gi, '$1s')       // cases -> case, houses -> house
+      .replace(/\b(\w+)xes\b/gi, '$1x')       // boxes -> box
+      .replace(/\b(\w+)shes\b/gi, '$1sh')     // dishes -> dish
+      .replace(/\b(\w+)ches\b/gi, '$1ch')     // watches -> watch
+      .replace(/\b(\w+)zes\b/gi, '$1z')        // sizes -> size
       .replace(/\b(\w+)(?<!ss)s\b/gi, '$1');  // boys -> boy (but not "class" -> "clas")
     // ignore spaces and hyphens completely for comparison (e.g., "pourover", "pour over", "pour-over")
     return normalizedPlurals.replace(/[\s-]+/g, '');
