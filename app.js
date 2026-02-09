@@ -463,6 +463,13 @@ function nf(s){
   var t = n(s);
   t = t.replace(/<[^>]*>/g, ' ');
   t = t.replace(/\\([^)]*\\)/g, ' ');
+  // remove apostrophes, commas, and periods to ignore them during comparison
+  t = t.replace(/[\\'',.]/g, '');
+  // apply basic plural normalization rules
+  t = t.replace(/\\b(\\w+)ies\\b/gi, '$1y');      // babies -> baby
+  t = t.replace(/\\b(\\w+)ves\\b/gi, '$1fe');      // wolves -> wolf  
+  t = t.replace(/\\b(\\w+)(?<!s)es\\b/gi, '$1');   // boxes -> box (but not "ss" -> "s")
+  t = t.replace(/\\b(\\w+)(?<!ss)s\\b/gi, '$1');   // boys -> boy (but not "class" -> "clas")
   // remove all non a-z0-9 and spaces, then collapse spaces
   t = t.replace(/[^a-z0-9 ]+/g, ' ').replace(/\\s+/g, ' ').trim();
   // for strict compare, remove spaces entirely
@@ -1118,8 +1125,16 @@ start();
     const base = normalize(s);
     // remove any parenthetical segments e.g. "word (IPA)" -> "word"
     const stripped = base.replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\s+/g, ' ').trim();
+    // remove apostrophes, commas, and periods to ignore them during comparison
+    const noPunctuation = stripped.replace(/['',.]/g, '');
+    // apply basic plural normalization rules
+    const normalizedPlurals = noPunctuation
+      .replace(/\b(\w+)ies\b/gi, '$1y')      // babies -> baby
+      .replace(/\b(\w+)ves\b/gi, '$1fe')      // wolves -> wolf
+      .replace(/\b(\w+)(?<!s)es\b/gi, '$1')   // boxes -> box (but not "ss" -> "s")
+      .replace(/\b(\w+)(?<!ss)s\b/gi, '$1');  // boys -> boy (but not "class" -> "clas")
     // ignore spaces and hyphens completely for comparison (e.g., "pourover", "pour over", "pour-over")
-    return stripped.replace(/[\s-]+/g, '');
+    return normalizedPlurals.replace(/[\s-]+/g, '');
   }
 
   function getCurrentIndex() {
