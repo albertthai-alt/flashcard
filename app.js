@@ -3089,13 +3089,31 @@ start();
   });
   if (dirDefToTermBtn) dirDefToTermBtn.addEventListener('click', () => {
     testDirection = 'def_to_term';
-    setMode('test');
-    startTest();
+    if (mode !== 'practice') {
+      setMode('test');
+      startTest();
+    } else {
+      // In practice mode, just update direction and re-render
+      if (dirDefToTermBtn && dirTermToDefBtn) {
+        dirDefToTermBtn.classList.add('active');
+        dirTermToDefBtn.classList.remove('active');
+      }
+      showTestPrompt();
+    }
   });
   if (dirTermToDefBtn) dirTermToDefBtn.addEventListener('click', () => {
     testDirection = 'term_to_def';
-    setMode('test');
-    startTest();
+    if (mode !== 'practice') {
+      setMode('test');
+      startTest();
+    } else {
+      // In practice mode, just update direction and re-render
+      if (dirDefToTermBtn && dirTermToDefBtn) {
+        dirTermToDefBtn.classList.add('active');
+        dirDefToTermBtn.classList.remove('active');
+      }
+      showTestPrompt();
+    }
   });
   // Function to update points for correct answers
   function updatePoints() {
