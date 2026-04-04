@@ -463,8 +463,8 @@ function nf(s){
   var t = n(s);
   t = t.replace(/<[^>]*>/g, ' ');
   t = t.replace(/\\([^)]*\\)/g, ' ');
-  // remove apostrophes, commas, and periods to ignore them during comparison
-  t = t.replace(/[\\'',.]/g, '');
+  // remove apostrophes, commas, periods, and question marks to ignore them during comparison
+  t = t.replace(/[\\'',.?]/g, '');
   // apply basic plural normalization rules
   t = t.replace(/\\b(\\w+)ies\\b/gi, '$1y');      // babies -> baby
   t = t.replace(/\\b(\\w+)ves\\b/gi, '$1fe');      // wolves -> wolf  
@@ -1129,8 +1129,8 @@ start();
     const base = normalize(s);
     // remove any parenthetical segments e.g. "word (IPA)" -> "word"
     const stripped = base.replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\s+/g, ' ').trim();
-    // remove apostrophes, commas, and periods to ignore them during comparison
-    const noPunctuation = stripped.replace(/['',.]/g, '');
+    // remove apostrophes, commas, periods, and question marks to ignore them during comparison
+    const noPunctuation = stripped.replace(/['',.?]/g, '');
     // apply basic plural normalization rules
     const normalizedPlurals = noPunctuation
       .replace(/\b(\w+)ies\b/gi, '$1y')      // babies -> baby
