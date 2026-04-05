@@ -479,6 +479,69 @@ function nf(s){
   // for strict compare, remove spaces entirely
   return t.replace(/\\s+/g, '');
 }
+// Basic normalization without plural rules for standalone
+function nb(s){
+  var t = n(s);
+  t = t.replace(/<[^>]*>/g, ' ');
+  t = t.replace(/\\([^)]*\\)/g, ' ');
+  // remove apostrophes, commas, periods, and question marks to ignore them during comparison
+  t = t.replace(/[\\'',.?]/g, '');
+  // remove all non a-z0-9 and spaces, then collapse spaces
+  t = t.replace(/[^a-z0-9 ]+/g, ' ').replace(/\\s+/g, ' ').trim();
+  // for strict compare, remove spaces entirely
+  return t.replace(/\\s+/g, '');
+}
+// Two-step normalization for standalone
+function nf2(s1, s2){
+  // Step 1: Basic normalization without plural rules, then remove spaces and compare
+  const basicNorm1 = nb(s1);
+  const basicNorm2 = nb(s2);
+  const basicCompare1 = basicNorm1.replace(/[\\s-]+/g, '');
+  const basicCompare2 = basicNorm2.replace(/[\\s-]+/g, '');
+  
+  // Check slash comparison for basic normalization
+  if (checkSlashComparisonStandalone(basicCompare1, basicCompare2)) {
+    return basicCompare1;
+  }
+  
+  // If basic comparison matches, return result
+  if (basicCompare1 === basicCompare2) {
+    return basicCompare1;
+  }
+  
+  // Step 2: Full normalization with plural rules if basic comparison failed
+  const fullNorm1 = nf(s1);
+  const fullNorm2 = nf(s2);
+  
+  // Check slash comparison for full normalization
+  if (checkSlashComparisonStandalone(fullNorm1, fullNorm2)) {
+    return fullNorm1;
+  }
+  
+  return fullNorm1; // Return normalized version for comparison
+}
+// Check if two strings match when considering slash-separated parts (standalone version)
+function checkSlashComparisonStandalone(str1, str2) {
+  // Split both strings by slash and trim
+  const parts1 = str1.split('/').map(part => part.trim()).filter(part => part.length > 0);
+  const parts2 = str2.split('/').map(part => part.trim()).filter(part => part.length > 0);
+  
+  // If either has no slash parts, return false (let normal comparison handle it)
+  if (parts1.length <= 1 && parts2.length <= 1) {
+    return false;
+  }
+  
+  // Check if any part from str1 matches any part from str2
+  for (let part1 of parts1) {
+    for (let part2 of parts2) {
+      if (part1 === part2) {
+        return true; // Found a matching pair
+      }
+    }
+  }
+  
+  return false; // No matching pairs found
+}
 function sh(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function gi(){if(mode==='practice')return pq.length?pq[0]:0;return order[tIdx]}
 // Inline helpers for buttons
@@ -516,11 +579,14 @@ function check(){
   const i=gi();
   const c=cards[i];
   const expectedRaw=(testDirection==='def_to_term'?c.term:c.definition)||'';
-  const exp=nf(expectedRaw);
   const raw=(document.getElementById('answer').value||'').trim();
   if(!raw) return;
-  const got=nf(raw);
-  if(exp && got && (got.length===exp.length) && (got===exp)){
+  
+  // Use two-step normalization for comparison
+  const normalizedExpected = nf2(expectedRaw, raw);
+  const normalizedInput = nf2(raw, expectedRaw);
+  
+  if(normalizedInput && normalizedExpected && (normalizedInput.length===normalizedExpected.length) && (normalizedInput===normalizedExpected)){
     const fb=document.getElementById('fb');
     if(currentWasWrong){
       fb.textContent='Đúng (sau khi sai lần đầu). Không tính điểm.';
@@ -1125,7 +1191,70 @@ start();
   }
 
   // Make parentheses content optional for matching
-  function normalizeForCompare(s) {
+  function normalizeForCompare(s1, s2) {
+    // Step 1: Basic normalization without plural rules, then remove spaces and compare
+    const basicNorm1 = normalizeBasic(s1);
+    const basicNorm2 = normalizeBasic(s2);
+    const basicCompare1 = basicNorm1.replace(/[\s-]+/g, '');
+    const basicCompare2 = basicNorm2.replace(/[\s-]+/g, '');
+    
+    // Check slash comparison for basic normalization
+    if (checkSlashComparison(basicCompare1, basicCompare2)) {
+      return basicCompare1;
+    }
+    
+    // If basic comparison matches, return result
+    if (basicCompare1 === basicCompare2) {
+      return basicCompare1;
+    }
+    
+    // Step 2: Full normalization with plural rules if basic comparison failed
+    const fullNorm1 = normalizeFull(s1);
+    const fullNorm2 = normalizeFull(s2);
+    
+    // Check slash comparison for full normalization
+    if (checkSlashComparison(fullNorm1, fullNorm2)) {
+      return fullNorm1;
+    }
+    
+    return fullNorm1; // Return normalized version for comparison
+  }
+  
+  // Check if two strings match when considering slash-separated parts
+  function checkSlashComparison(str1, str2) {
+    // Split both strings by slash and trim
+    const parts1 = str1.split('/').map(part => part.trim()).filter(part => part.length > 0);
+    const parts2 = str2.split('/').map(part => part.trim()).filter(part => part.length > 0);
+    
+    // If either has no slash parts, return false (let normal comparison handle it)
+    if (parts1.length <= 1 && parts2.length <= 1) {
+      return false;
+    }
+    
+    // Check if any part from str1 matches any part from str2
+    for (let part1 of parts1) {
+      for (let part2 of parts2) {
+        if (part1 === part2) {
+          return true; // Found a matching pair
+        }
+      }
+    }
+    
+    return false; // No matching pairs found
+  }
+  
+  // Basic normalization without plural rules
+  function normalizeBasic(s) {
+    const base = normalize(s);
+    // remove any parenthetical segments e.g. "word (IPA)" -> "word"
+    const stripped = base.replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\s+/g, ' ').trim();
+    // remove apostrophes, commas, periods, and question marks to ignore them during comparison
+    const noPunctuation = stripped.replace(/['',.?]/g, '');
+    return noPunctuation;
+  }
+  
+  // Full normalization with plural rules
+  function normalizeFull(s) {
     const base = normalize(s);
     // remove any parenthetical segments e.g. "word (IPA)" -> "word"
     const stripped = base.replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\s+/g, ' ').trim();
@@ -1281,17 +1410,19 @@ start();
   function checkAnswer() {
     const idxNow = getCurrentIndex();
     const c = cards[idxNow];
-    // Determine expected based on direction
-    const expected = normalizeForCompare(testDirection === 'def_to_term' ? c.term : c.definition);
+    const expectedRaw = testDirection === 'def_to_term' ? c.term : c.definition;
     const rawInput = (testAnswer.value || '').trim();
     if (!rawInput) {
       // Do not treat as wrong; simply ignore
       return;
     }
-    const got = normalizeForCompare(rawInput);
+    
+    // Use two-step normalization for comparison
+    const normalizedExpected = normalizeForCompare(expectedRaw, rawInput);
+    const normalizedInput = normalizeForCompare(rawInput, expectedRaw);
     const correctAnswer = testDirection === 'def_to_term' ? (c.term || '') : (c.definition || '');
     
-    if (got && expected && (got === expected)) {
+    if (normalizedInput && normalizedExpected && (normalizedInput === normalizedExpected)) {
       // If previously wrong for this card, do not increase score; allow advance for learning purposes
       if (currentWasWrong) {
         testFeedback.textContent = 'Đúng (sau khi sai lần đầu). Không tính điểm.';
