@@ -1226,7 +1226,7 @@ start();
     const parts1 = str1.split('/').map(part => part.trim()).filter(part => part.length > 0);
     const parts2 = str2.split('/').map(part => part.trim()).filter(part => part.length > 0);
     
-    // If either has no slash parts, return false (let normal comparison handle it)
+    // If both have no slash parts, return false (let normal comparison handle it)
     if (parts1.length <= 1 && parts2.length <= 1) {
       return false;
     }
@@ -1234,7 +1234,7 @@ start();
     // Check if any part from str1 matches any part from str2
     for (let part1 of parts1) {
       for (let part2 of parts2) {
-        if (part1 === part2) {
+        if (part1.toLowerCase() === part2.toLowerCase()) {
           return true; // Found a matching pair
         }
       }
