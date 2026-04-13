@@ -1192,33 +1192,22 @@ start();
 
   // Make parentheses content optional for matching
   function normalizeForCompare(s1, s2) {
-    console.log('normalizeForCompare INPUT:', s1, 'vs', s2);
-    
     // Step 1: Basic normalization without plural rules, then remove spaces and compare
     const basicNorm1 = normalizeBasic(s1);
     const basicNorm2 = normalizeBasic(s2);
     const basicCompare1 = basicNorm1.replace(/[\s-]+/g, '');
     const basicCompare2 = basicNorm2.replace(/[\s-]+/g, '');
     
-    console.log('Basic normalization:');
-    console.log('  basicNorm1:', basicNorm1);
-    console.log('  basicNorm2:', basicNorm2);
-    console.log('  basicCompare1:', basicCompare1);
-    console.log('  basicCompare2:', basicCompare2);
-    
     // Check slash comparison for basic normalization
     const slashCheckBasic = checkSlashComparison(basicCompare1, basicCompare2);
-    console.log('Slash check basic result:', slashCheckBasic);
     if (slashCheckBasic) {
       // When slash match found, return the shorter/normalized version for consistent comparison
       const result = basicCompare1.length <= basicCompare2.length ? basicCompare1 : basicCompare2;
-      console.log('Slash match found, returning shorter result:', result);
       return result;
     }
     
     // If basic comparison matches, return result
     if (basicCompare1 === basicCompare2) {
-      console.log('Basic comparison matches, returning basicCompare1:', basicCompare1);
       return basicCompare1;
     }
     
@@ -1226,21 +1215,14 @@ start();
     const fullNorm1 = normalizeFull(s1);
     const fullNorm2 = normalizeFull(s2);
     
-    console.log('Full normalization:');
-    console.log('  fullNorm1:', fullNorm1);
-    console.log('  fullNorm2:', fullNorm2);
-    
     // Check slash comparison for full normalization
     const slashCheckFull = checkSlashComparison(fullNorm1, fullNorm2);
-    console.log('Slash check full result:', slashCheckFull);
     if (slashCheckFull) {
       // When slash match found, return the shorter/normalized version for consistent comparison
       const result = fullNorm1.length <= fullNorm2.length ? fullNorm1 : fullNorm2;
-      console.log('Slash match found in full, returning shorter result:', result);
       return result;
     }
     
-    console.log('Returning fullNorm1 as final result:', fullNorm1);
     return fullNorm1; // Return normalized version for comparison
   }
   
@@ -1250,31 +1232,20 @@ start();
     const parts1 = str1.split('/').map(part => part.trim()).filter(part => part.length > 0);
     const parts2 = str2.split('/').map(part => part.trim()).filter(part => part.length > 0);
     
-    console.log('checkSlashComparison DEBUG:');
-    console.log('  str1:', str1);
-    console.log('  str2:', str2);
-    console.log('  parts1:', parts1);
-    console.log('  parts2:', parts2);
-    console.log('  parts1.length:', parts1.length, 'parts2.length:', parts2.length);
-    
     // If both have no slash parts, return false (let normal comparison handle it)
     if (parts1.length <= 1 && parts2.length <= 1) {
-      console.log('  Both have no slash parts, returning false');
       return false;
     }
     
     // Check if any part from str1 matches any part from str2
     for (let part1 of parts1) {
       for (let part2 of parts2) {
-        console.log('  Comparing:', part1, 'with', part2);
         if (part1.toLowerCase() === part2.toLowerCase()) {
-          console.log('  Found match! Returning true');
           return true; // Found a matching pair
         }
       }
     }
     
-    console.log('  No matches found, returning false');
     return false; // No matching pairs found
   }
   
@@ -1283,9 +1254,13 @@ start();
     const base = normalize(s);
     // remove any parenthetical segments e.g. "word (IPA)" -> "word"
     const stripped = base.replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\s+/g, ' ').trim();
+    // remove 'to' or 'to be' at the beginning and also handle slash-separated parts
+    const withoutTo = stripped.replace(/^(to\s+be\s+|to\s+)/gi, '').split('/').map(part => 
+      part.replace(/^(to\s+be\s+|to\s+)/gi, '').trim()
+    ).join('/');
     // remove apostrophes, commas, periods, and question marks to ignore them during comparison
-    const noPunctuation = stripped.replace(/['',.?]/g, '');
-    return noPunctuation;
+    const noPunctuation = withoutTo.replace(/['',.?]/g, '');
+    return noPunctuation.trim();
   }
   
   // Full normalization with plural rules
@@ -1293,8 +1268,12 @@ start();
     const base = normalize(s);
     // remove any parenthetical segments e.g. "word (IPA)" -> "word"
     const stripped = base.replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\s+/g, ' ').trim();
+    // remove 'to' or 'to be' at the beginning and also handle slash-separated parts
+    const withoutTo = stripped.replace(/^(to\s+be\s+|to\s+)/gi, '').split('/').map(part => 
+      part.replace(/^(to\s+be\s+|to\s+)/gi, '').trim()
+    ).join('/');
     // remove apostrophes, commas, periods, and question marks to ignore them during comparison
-    const noPunctuation = stripped.replace(/['',.?]/g, '');
+    const noPunctuation = withoutTo.replace(/['',.?]/g, '');
     // apply basic plural normalization rules
     const normalizedPlurals = noPunctuation
       .replace(/\b(\w+)ies\b/gi, '$1y')      // babies -> baby
@@ -1306,7 +1285,7 @@ start();
       .replace(/\b(\w+)zes\b/gi, '$1z')        // sizes -> size
       .replace(/\b(\w+)(?<!ss)s\b/gi, '$1');  // boys -> boy (but not "class" -> "clas")
     // ignore spaces and hyphens completely for comparison (e.g., "pourover", "pour over", "pour-over")
-    return normalizedPlurals.replace(/[\s-]+/g, '');
+    return normalizedPlurals.replace(/[\s-]+/g, '').trim();
   }
 
   function getCurrentIndex() {
@@ -1456,15 +1435,6 @@ start();
     const normalizedExpected = normalizeForCompare(expectedRaw, rawInput);
     const normalizedInput = normalizeForCompare(rawInput, expectedRaw);
     const correctAnswer = testDirection === 'def_to_term' ? (c.term || '') : (c.definition || '');
-    
-    // Debug logs
-    console.log('=== DEBUG COMPARISON ===');
-    console.log('expectedRaw:', expectedRaw);
-    console.log('rawInput:', rawInput);
-    console.log('normalizedExpected:', normalizedExpected);
-    console.log('normalizedInput:', normalizedInput);
-    console.log('Are they equal?', normalizedInput === normalizedExpected);
-    console.log('========================');
     
     if (normalizedInput && normalizedExpected && (normalizedInput === normalizedExpected)) {
       // If previously wrong for this card, do not increase score; allow advance for learning purposes
