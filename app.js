@@ -1254,10 +1254,13 @@ start();
     const base = normalize(s);
     // remove any parenthetical segments e.g. "word (IPA)" -> "word"
     const stripped = base.replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\s+/g, ' ').trim();
-    // remove 'to' or 'to be' at the beginning and also handle slash-separated parts
-    const withoutTo = stripped.replace(/^(to\s+be\s+|to\s+)/gi, '').split('/').map(part => 
-      part.replace(/^(to\s+be\s+|to\s+)/gi, '').trim()
-    ).join('/');
+    // split by slash first, then remove 'to'/'to be' from each part
+    const parts = stripped.split('/');
+    const processedParts = parts.map(part => {
+      const trimmed = part.trim();
+      return trimmed.replace(/^(to\s+be\s+|to\s+)/gi, '').trim();
+    }).filter(part => part.length > 0);
+    const withoutTo = processedParts.join('/');
     // remove apostrophes, commas, periods, and question marks to ignore them during comparison
     const noPunctuation = withoutTo.replace(/['',.?]/g, '');
     return noPunctuation.trim();
@@ -1268,10 +1271,13 @@ start();
     const base = normalize(s);
     // remove any parenthetical segments e.g. "word (IPA)" -> "word"
     const stripped = base.replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\s+/g, ' ').trim();
-    // remove 'to' or 'to be' at the beginning and also handle slash-separated parts
-    const withoutTo = stripped.replace(/^(to\s+be\s+|to\s+)/gi, '').split('/').map(part => 
-      part.replace(/^(to\s+be\s+|to\s+)/gi, '').trim()
-    ).join('/');
+    // split by slash first, then remove 'to'/'to be' from each part
+    const parts = stripped.split('/');
+    const processedParts = parts.map(part => {
+      const trimmed = part.trim();
+      return trimmed.replace(/^(to\s+be\s+|to\s+)/gi, '').trim();
+    }).filter(part => part.length > 0);
+    const withoutTo = processedParts.join('/');
     // remove apostrophes, commas, periods, and question marks to ignore them during comparison
     const noPunctuation = withoutTo.replace(/['',.?]/g, '');
     // apply basic plural normalization rules
