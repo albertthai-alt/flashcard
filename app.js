@@ -31,6 +31,12 @@
   const cardInner = $('#cardInner');
   const cardFront = $('#cardFront');
   const cardBack = $('#cardBack');
+  const cardFrontImage = $('#cardFrontImage');
+  const cardBackImage = $('#cardBackImage');
+  const cardFrontImg = $('#cardFrontImg');
+  const cardBackImg = $('#cardBackImg');
+  const cardFrontText = $('#cardFrontText');
+  const cardBackText = $('#cardBackText');
   const prevBtn = $('#prevBtn');
   const nextBtn = $('#nextBtn');
   const progressIndex = $('#progressIndex');
@@ -39,6 +45,9 @@
   const testView = $('#testView');
   const testArea = $('#testArea');
   const testPrompt = $('#testPrompt');
+  const testImage = $('#testImage');
+  const testImg = $('#testImg');
+  const testText = $('#testText');
   const testAnswer = $('#testAnswer');
   const checkBtn = $('#checkBtn');
   const skipBtn = $('#skipBtn');
@@ -1165,11 +1174,75 @@ start();
     
     // Set card content based on study direction
     if (studyDirection === 'def_to_term') {
-      cardFront.textContent = c.definition || '';
-      cardBack.textContent = c.term || '';
+      // Handle front side (definition)
+      const frontText = c.definition || '';
+      const frontImage = c.image || '';
+      
+      console.log('Study mode - Card:', c);
+      console.log('Study mode - Front image:', frontImage);
+      console.log('Study mode - Front elements:', { cardFrontImage, cardFrontImg, cardFrontText });
+      
+      if (frontImage) {
+        cardFrontImg.src = frontImage;
+        cardFrontImg.alt = frontText;
+        cardFrontImage.style.display = 'block';
+        cardFrontText.textContent = frontText;
+        cardFrontText.style.display = frontText ? 'block' : 'none';
+        console.log('Study mode - Front image set');
+      } else {
+        cardFrontImage.style.display = 'none';
+        cardFrontText.textContent = frontText;
+        cardFrontText.style.display = 'block';
+        console.log('Study mode - No front image');
+      }
+      
+      // Handle back side (term)
+      const backText = c.term || '';
+      const backImage = c.image || '';
+      
+      if (backImage) {
+        cardBackImg.src = backImage;
+        cardBackImg.alt = backText;
+        cardBackImage.style.display = 'block';
+        cardBackText.textContent = backText;
+        cardBackText.style.display = backText ? 'block' : 'none';
+      } else {
+        cardBackImage.style.display = 'none';
+        cardBackText.textContent = backText;
+        cardBackText.style.display = 'block';
+      }
     } else {
-      cardFront.textContent = c.term || '';
-      cardBack.textContent = c.definition || '';
+      // Handle front side (term)
+      const frontText = c.term || '';
+      const frontImage = c.image || '';
+      
+      if (frontImage) {
+        cardFrontImg.src = frontImage;
+        cardFrontImg.alt = frontText;
+        cardFrontImage.style.display = 'block';
+        cardFrontText.textContent = frontText;
+        cardFrontText.style.display = frontText ? 'block' : 'none';
+      } else {
+        cardFrontImage.style.display = 'none';
+        cardFrontText.textContent = frontText;
+        cardFrontText.style.display = 'block';
+      }
+      
+      // Handle back side (definition)
+      const backText = c.definition || '';
+      const backImage = c.image || '';
+      
+      if (backImage) {
+        cardBackImg.src = backImage;
+        cardBackImg.alt = backText;
+        cardBackImage.style.display = 'block';
+        cardBackText.textContent = backText;
+        cardBackText.style.display = backText ? 'block' : 'none';
+      } else {
+        cardBackImage.style.display = 'none';
+        cardBackText.textContent = backText;
+        cardBackText.style.display = 'block';
+      }
     }
     card.classList.remove('flipped');
     progressIndex.textContent = String(idx + 1);
@@ -1399,13 +1472,43 @@ start();
       return;
     }
     const c = cards[currentIndex];
+    
+    // Handle image display
+    const image = c.image || '';
+    console.log('Test mode - Card:', c);
+    console.log('Test mode - Image:', image);
+    console.log('Test mode - Elements:', { testImage, testImg, testText });
+    
+    if (image) {
+      // Try to set image src, handle CORS errors
+      testImg.onerror = function() {
+        console.log('Image failed to load (CORS?), trying proxy...');
+        // Fallback: try using a proxy or data URL
+        testImg.src = `https://cors-anywhere.herokuapp.com/${image}`;
+      };
+      
+      testImg.onload = function() {
+        console.log('Image loaded successfully');
+      };
+      
+      testImg.src = image;
+      testImg.alt = '';
+      testImage.style.display = 'block';
+      console.log('Test mode - Image set, display:', testImage.style.display);
+    } else {
+      testImage.style.display = 'none';
+      console.log('Test mode - No image, hiding');
+    }
+    
     if (testDirection === 'def_to_term') {
       // Show definition, expect term
-      testPrompt.textContent = c.definition || '';
+      const defText = c.definition || '';
+      testText.textContent = defText;
       if (testAnswer) testAnswer.placeholder = 'Nhập thuật ngữ...';
     } else {
       // Show term, expect definition
-      testPrompt.textContent = c.term || '';
+      const termText = c.term || '';
+      testText.textContent = termText;
       if (testAnswer) testAnswer.placeholder = 'Nhập định nghĩa...';
     }
     testAnswer.value = '';
@@ -2147,8 +2250,35 @@ start();
         const defEl = el.querySelector('[data-testid="DefinitionText"], [data-testid="definition-text"], .SetPageTerm-definitionText, .DefinitionText');
         const term = termEl ? htmlToTextPreserveBreaks(termEl.innerHTML || termEl.textContent || '') : '';
         const def = defEl ? htmlToTextPreserveBreaks(defEl.innerHTML || defEl.textContent || '') : '';
+        
+        // Extract image from this card
+        let image = '';
+        
+        // Try to find image in the current card container
+        const imgEl = el.querySelector('img[src*="quizlet.com"], img[src*="o.quizlet.com"]');
+        if (imgEl && imgEl.src) {
+          image = imgEl.src;
+        }
+        
+        // Also check for preload image links in the container
+        if (!image) {
+          const preloadLink = el.querySelector('link[rel="preload"][as="image"][href*="quizlet.com"]');
+          if (preloadLink && preloadLink.href) {
+            image = preloadLink.href;
+          }
+        }
+        
+        // If still no image, try to find ZoomableImage
+        if (!image) {
+          const zoomableImg = el.querySelector('.ZoomableImage img');
+          if (zoomableImg && zoomableImg.src) {
+            image = zoomableImg.src;
+          }
+        }
+        
         if ((term && term.trim()) || (def && def.trim())) {
-          cards.push({ term: term, definition: def });
+          console.log('Card extracted:', { term, def, image });
+          cards.push({ term: term, definition: def, image: image });
         }
       });
       if (cards.length) return { title, cards };
@@ -2161,7 +2291,50 @@ start();
       for (let i = 0; i < termNodes.length; i++) {
         const t = htmlToTextPreserveBreaks(termNodes[i].innerHTML || termNodes[i].textContent || '');
         const d = htmlToTextPreserveBreaks(defNodes[i].innerHTML || defNodes[i].textContent || '');
-        if (t || d) cards.push({ term: t, definition: d });
+        
+        // Extract image for this card by looking for nearby images
+        let image = '';
+        
+        // Find the parent container for this term/def pair
+        const termContainer = termNodes[i].closest('[data-testid="SetPageTerm"], .SetPageTerms-term, .TermContent');
+        const defContainer = defNodes[i].closest('[data-testid="SetPageTerm"], .SetPageTerms-term, .TermContent');
+        
+        // Try term container first
+        if (termContainer) {
+          const imgEl = termContainer.querySelector('img[src*="quizlet.com"], img[src*="o.quizlet.com"]');
+          if (imgEl && imgEl.src) image = imgEl.src;
+          
+          if (!image) {
+            const preloadLink = termContainer.querySelector('link[rel="preload"][as="image"][href*="quizlet.com"]');
+            if (preloadLink && preloadLink.href) image = preloadLink.href;
+          }
+          
+          if (!image) {
+            const zoomableImg = termContainer.querySelector('.ZoomableImage img');
+            if (zoomableImg && zoomableImg.src) image = zoomableImg.src;
+          }
+        }
+        
+        // Fallback to definition container
+        if (!image && defContainer) {
+          const imgEl = defContainer.querySelector('img[src*="quizlet.com"], img[src*="o.quizlet.com"]');
+          if (imgEl && imgEl.src) image = imgEl.src;
+          
+          if (!image) {
+            const preloadLink = defContainer.querySelector('link[rel="preload"][as="image"][href*="quizlet.com"]');
+            if (preloadLink && preloadLink.href) image = preloadLink.href;
+          }
+          
+          if (!image) {
+            const zoomableImg = defContainer.querySelector('.ZoomableImage img');
+            if (zoomableImg && zoomableImg.src) image = zoomableImg.src;
+          }
+        }
+        
+        if (t || d) {
+          console.log('Card extracted (strategy 2):', { t, d, image });
+          cards.push({ term: t, definition: d, image: image });
+        }
       }
       if (cards.length) return { title, cards };
     }
