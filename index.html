@@ -15,7 +15,7 @@
         <div class="brand-title">Flashcards</div>
       </div>
       <div class="brand-right">
-        <div class="brand-version">v2.0</div>
+        <div class="brand-version">v1.15.1</div>
       </div>
     </header>
     <section class="input-section" style="padding: 10px 15px 15px;">
@@ -103,18 +103,8 @@
         </div>
         <div class="card" id="card">
           <div class="card-inner" id="cardInner">
-            <div class="card-face card-front" id="cardFront">
-              <div class="card-image" id="cardFrontImage" style="display: none;">
-                <img id="cardFrontImg" alt="" style="max-width: 100%; max-height: 200px; object-fit: contain;">
-              </div>
-              <div class="card-text" id="cardFrontText">Mặt trước</div>
-            </div>
-            <div class="card-face card-back" id="cardBack">
-              <div class="card-image" id="cardBackImage" style="display: none;">
-                <img id="cardBackImg" alt="" style="max-width: 100%; max-height: 200px; object-fit: contain;">
-              </div>
-              <div class="card-text" id="cardBackText">Mặt sau</div>
-            </div>
+            <div class="card-face card-front" id="cardFront">Mặt trước</div>
+            <div class="card-face card-back" id="cardBack">Mặt sau</div>
           </div>
         </div>
         <div class="controls">
@@ -150,12 +140,7 @@
             </button>
           </div>
         </div>
-        <div class="prompt" id="testPrompt">
-          <div class="test-image" id="testImage" style="display: none; text-align: center; margin-bottom: 10px;">
-            <img id="testImg" alt="" style="max-width: 100%; max-height: 200px; object-fit: contain;">
-          </div>
-          <div class="test-text" id="testText"></div>
-        </div>
+        <div class="prompt" id="testPrompt"></div>
         <div class="test-input-container">
           <input type="text" id="testAnswer" class="url-input test-answer-input" placeholder="Nhập câu trả lời..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
           <div class="test-controls">

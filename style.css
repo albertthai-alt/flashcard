@@ -234,46 +234,7 @@ input[type="file"] { padding: 6px; }
 .card { width: 100%; height: 260px; perspective: 1000px; margin-bottom: 14px; position: relative; }
 .card-inner { position: relative; width: 100%; height: 100%; transition: transform 0.6s; transform-style: preserve-3d; }
 .card.flipped .card-inner { transform: rotateY(180deg); }
-.card-face {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  backface-visibility: hidden;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  padding: 20px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%);
-  box-shadow: inset 0 2px 8px rgba(0,0,0,0.06);
-}
-
-.card-image {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.card-image img {
-  max-width: 100%;
-  max-height: 200px;
-  object-fit: contain;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-.card-text {
-  text-align: center;
-  font-size: 18px;
-  font-weight: 600;
-  color: #2d3748;
-  line-height: 1.5;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-}
+.card-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border: 1px solid #d7d7e7; border-radius: 14px; display: flex; align-items: center; justify-content: center; padding: 20px; font-size: 22px; text-align: center; box-shadow: inset 0 1px 0 rgba(255,255,255,0.6); white-space: pre-wrap; }
 .card-front { background: #ffffff; }
 .card-back { background: #f0f1fb; transform: rotateY(180deg); }
 
@@ -369,33 +330,6 @@ input[type="file"] { padding: 6px; }
 }
 .direction-switch .secondary-btn:not(.active):hover { background: #f2f3fb; }
 .prompt {
-  font-size: 30px;
-  font-weight: 800;
-  line-height: 1.35;
-  margin-bottom: 14px;
-  padding-bottom: 14px;
-  border-bottom: 1px dashed #e1e2f0;
-  white-space: pre-wrap;
-}
-
-.test-image {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.test-image img {
-  max-width: 100%;
-  max-height: 200px;
-  object-fit: contain;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-.test-text {
-  text-align: center;
   font-size: 30px;
   font-weight: 800;
   line-height: 1.35;
