@@ -1,6 +1,16 @@
 (() => {
+  console.log('App initializing...');
   const $ = (sel) => document.querySelector(sel);
-  const chkStarred = document.getElementById('chkStarred');
+  console.log('DOM elements check:', {
+    chkStarred: !!document.getElementById('chkStarred'),
+    chkRead: !!document.getElementById('chkRead'),
+    modeStudyBtn: !!document.getElementById('modeStudy'),
+    btnLoad: !!document.getElementById('btnLoad'),
+    btnPaste: !!document.getElementById('btnPaste'),
+    cardFrontImage: !!document.getElementById('cardFrontImage'),
+    cardBackImage: !!document.getElementById('cardBackImage'),
+    testImage: !!document.getElementById('testImage')
+  });
   const chkRead = document.getElementById('chkRead');
   const modeStudyBtn = $('#modeStudy');
   const modeTestBtn = $('#modeTest');
