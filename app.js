@@ -2782,8 +2782,10 @@ start();
         
         // Update the current view based on the active mode
         if (mode === 'test') {
+          setMode('test');
           startTest();
         } else if (mode === 'practice') {
+          setMode('practice');
           startPractice();
         } else {
           setMode('study');
