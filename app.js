@@ -2785,7 +2785,7 @@ start();
           setMode('test');
           startTest();
         } else if (mode === 'practice') {
-          setMode('practice');
+          setMode('practice');alert('practice');
           startPractice();
         } else {
           setMode('study');
