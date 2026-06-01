@@ -2260,13 +2260,10 @@ start();
         knownCards.clear();
         testOrder = [];
         testIdx = 0;
-        practiceQueue = [];
         
         // Force a complete re-render
         if (mode === 'test') {
           startTest();
-        } else if (mode === 'practice') {
-          startPractice();
         } else {
           // Clear any existing card display
           if (cardFront) cardFront.textContent = '';
@@ -2363,7 +2360,6 @@ start();
         // Reset test/practice state when filtering
         testIdx = 0;
         testOrder = [];
-        practiceQueue = [];
         if (mode === 'test') {
           startTest();
         } else if (mode === 'practice') {
@@ -2783,7 +2779,6 @@ start();
         knownCards.clear();
         testOrder = [];
         testIdx = 0;
-        practiceQueue = [];
         
         // Update the current view based on the active mode
         if (mode === 'test') {
@@ -2802,10 +2797,9 @@ start();
       meta.hidden = false;
       if (modeSwitch) modeSwitch.hidden = false;
       
-      // Only render study if in study mode
-      if (mode === 'study') {
-        renderStudy();
-      }
+      // Reset to first card
+      idx = 0;
+      renderStudy();
       
     } catch (error) {
       console.error('Error loading cards from Notion:', error);
