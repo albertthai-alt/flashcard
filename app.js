@@ -2773,7 +2773,7 @@ start();
       } else {
         cards = newCards;
         setTitle.textContent = databaseName || 'Notion Database';
-        
+        /*
         // Reset and start a new session
         idx = 0;
         knownCards.clear();
@@ -2785,12 +2785,37 @@ start();
           setMode('test');
           startTest();
         } else if (mode === 'practice') {
-          setMode('practice');alert('practice');
+          setMode('practice');
           startPractice();
         } else {
           setMode('study');
         }
-        
+        */
+
+      
+      // Reset all mode-specific state variables
+      testOrder = [];
+      practiceQueue = [];
+      testIdx = 0;
+      knownCards.clear();
+      idx = 0;
+      currentFilteredCards = []; // Reset cached filtered cards
+      currentFilter = 'all'; // Reset filter to default
+      
+      updateCardCount();
+      meta.hidden = false;
+      
+      // Initialize based on current mode instead of always forcing study mode
+      if (mode === 'test') {
+        startTest();
+      } else if (mode === 'practice') {
+        startPractice();
+      } else {
+        renderStudy();
+        setMode('study');
+      }
+      // Don't auto-save to JSON to respect user's choice
+
         showNotionStatus(`Đã tải ${newCards.length} thẻ từ Notion`, 'success');
       }
 
