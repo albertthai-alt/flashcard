@@ -309,7 +309,8 @@
   function exportList() {
     try {
       const useDef = !expListTerm || (expListDef && expListDef.checked);
-      const lines = (cards || []).map((c) => {
+      const currentCards = getCurrentCards();
+      const lines = (currentCards || []).map((c) => {
         const raw = useDef ? (c.definition || '') : (c.term || '');
         return stripParenthesesAll(raw);
       });
@@ -329,7 +330,8 @@
     try {
       const sep1 = (expSep1 && expSep1.value != null) ? String(expSep1.value) : '{';
       const sep2 = (expSep2 && expSep2.value != null) ? String(expSep2.value) : '}';
-      const lines = (cards || []).map((c) => (
+      const currentCards = getCurrentCards();
+      const lines = (currentCards || []).map((c) => (
         stripParenthesesAll(c.term || '') + sep1 + stripParenthesesAll(c.definition || '') + sep2
       ));
       const out = lines.join('\n');
@@ -346,7 +348,8 @@
 
   function exportStandaloneHtml() {
     try {
-      if (!cards.length) {
+      const currentCards = getCurrentCards();
+      if (!currentCards.length) {
         status.textContent = 'Chưa có thẻ để xuất.';
         status.classList.remove('success');
         status.classList.add('error');
@@ -354,7 +357,7 @@
       }
       const dataTitle = setTitle.textContent || 'Bộ thẻ';
       // Sanitize cards to plain text to avoid HTML tags affecting comparison in exported file
-      const safeCardsArr = (cards || []).map((c) => ({
+      const safeCardsArr = (currentCards || []).map((c) => ({
         term: htmlToTextPreserveBreaks((c && c.term) || ''),
         definition: htmlToTextPreserveBreaks((c && c.definition) || '')
       }));
